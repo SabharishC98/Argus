@@ -64,9 +64,17 @@ class Explainer:
                 f"SEVERITY ESCALATION: Initial finding rated {escalation_data.get('initial')}, but graph traversal revealed a 4-hop path to {escalation_data.get('discovered_capability', 'privileged capability')}. Escalated to {escalation_data.get('escalated')}."
             )
 
-        # 6. Failure honesty / Uncertainty (Requirement 5)
+        # 6. FalkorDB Offline / Critical Failure & Uncertainty
         uncertainty = state.uncertainty_state
-        if uncertainty == "INSUFFICIENT_EVIDENCE":
+        if state.status == "FAILED_GRAPH_UNAVAILABLE" or state.decision == "HALTED_FALKORDB_OFFLINE":
+            exec_summary = (
+                "CRITICAL FAILURE: FalkorDB is offline or unreachable. "
+                "ShadowLens strictly requires FalkorDB as its primary authoritative graph database. "
+                "Multi-hop attack path reasoning, privileged reachability analysis, blast-radius calculation, "
+                "and graph-based risk escalation have halted completely."
+            )
+        # 7. Failure honesty / Uncertainty (Requirement 5)
+        elif uncertainty == "INSUFFICIENT_EVIDENCE":
             exec_summary = (
                 f"INSUFFICIENT EVIDENCE: ShadowLens Agent investigated '{state.target_entity or state.query}' across the connected graph. "
                 f"While localized anomalies exist in the component's perimeter, the graph confirmed NO complete execution or reachability path connects to sensitive production datastores, KMS keys, or privileged roles. "

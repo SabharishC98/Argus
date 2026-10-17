@@ -53,7 +53,8 @@ class InvestigationPlanner:
             logger.info("Running in Autonomous Graph Planner mode (zero-API key offline demo mode).")
             state = await self._run_autonomous_graph_loop(state, max_steps, on_step_callback)
 
-        state.status = "COMPLETED"
+        if state.status not in ("FAILED_GRAPH_UNAVAILABLE", "AWAITING_HUMAN_APPROVAL"):
+            state.status = "COMPLETED"
         return state
 
     async def _call_mcp_tool(
@@ -200,6 +201,21 @@ class InvestigationPlanner:
         """
         async def call_tool(name: str, args: Dict[str, Any], purpose: str):
             return await self._call_mcp_tool(state, name, args, purpose, on_step_callback=on_step_callback)
+
+        # Critical Verification Check: FalkorDB is required for graph reasoning
+        from src.graph.graph_store import get_graph_store
+        store = get_graph_store()
+        if hasattr(store, "is_operational") and not store.is_operational():
+            state.status = "FAILED_GRAPH_UNAVAILABLE"
+            state.decision = "HALTED_FALKORDB_OFFLINE"
+            state.error = "FalkorDB is offline or unreachable. Primary graph database is required."
+            state.add_timeline_event(
+                tool="falkordb_connectivity_check",
+                purpose="Verify FalkorDB primary graph database connectivity",
+                evidence="CRITICAL: FalkorDB is offline or disabled. Connection refused.",
+                conclusion="HALTED: Multi-hop reasoning, blast-radius calculation, and graph-powered investigation cannot proceed without FalkorDB.",
+            )
+            return state
 
         query = state.query.lower()
 

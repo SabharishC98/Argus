@@ -1,8 +1,6 @@
 """
 Graph Store abstraction for ShadowLens.
-Provides unified interface with dual backends:
-1. Neo4jGraphStore - Native Cypher queries against Neo4j database
-2. InMemoryGraphStore - Fast NetworkX-backed in-memory graph engine
+Primary Authoritative Graph Database: FalkorDB (via Cypher queries).
 """
 
 from __future__ import annotations
@@ -551,38 +549,26 @@ class Neo4jGraphStore(BaseGraphStore):
         return self._fallback_store.get_centrality_metrics()
 
 
+from src.graph.falkordb_store import FalkorDBGraphStore, FalkorDBUnavailableError
+
 # Global Singleton
 _GRAPH_STORE: Optional[BaseGraphStore] = None
 
 
 def get_graph_store() -> BaseGraphStore:
     """
-    Factory that returns active graph store.
-    Tries Neo4j if NEO4J_URI is configured and reachable;
-    otherwise falls back smoothly to InMemoryGraphStore.
+    Factory that returns active primary graph store: FalkorDBGraphStore.
+    FalkorDB is the primary and authoritative graph database for ShadowLens.
+    All MCP graph tools and agent multi-hop reasoning query FalkorDB directly.
     """
     global _GRAPH_STORE
     if _GRAPH_STORE is not None:
         return _GRAPH_STORE
 
-    neo4j_uri = os.getenv("NEO4J_URI")
-    neo4j_user = os.getenv("NEO4J_USER", "neo4j")
-    neo4j_password = os.getenv("NEO4J_PASSWORD", "shadowlens_password")
-
-    if neo4j_uri:
-        try:
-            logger.info(f"Attempting connection to Neo4j at {neo4j_uri}...")
-            store = Neo4jGraphStore(neo4j_uri, neo4j_user, neo4j_password)
-            # Test connectivity
-            with store.driver.session() as s:
-                s.run("RETURN 1").single()
-            logger.info("Successfully connected to Neo4j.")
-            _GRAPH_STORE = store
-            return _GRAPH_STORE
-        except Exception as exc:
-            logger.warning(f"Neo4j connection failed ({exc}). Falling back to InMemoryGraphStore.")
-
-    _GRAPH_STORE = InMemoryGraphStore()
+    logger.info("Initializing FalkorDB Primary Graph Database (graph: shadowlens)...")
+    store = FalkorDBGraphStore()
     from src.graph.seed_data import seed_security_graph
-    seed_security_graph(_GRAPH_STORE)
+    seed_security_graph(store)
+    _GRAPH_STORE = store
     return _GRAPH_STORE
+

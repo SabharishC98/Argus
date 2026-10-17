@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from src.graph.graph_store import get_graph_store
+from src.graph.falkordb_store import FalkorDBUnavailableError
 from src.graph.schema import EntityType
 
 if TYPE_CHECKING:
@@ -14,52 +15,58 @@ if TYPE_CHECKING:
 
 def calculate_graph_risk(entity_id: str, decay: float = 0.75) -> Dict[str, Any]:
     """
-    Calculate risk propagation score outwards from an investigated entity.
+    Calculate risk propagation score outwards from an investigated entity using FalkorDB.
     Propagates risk scores along dependency, execution, and data-flow edges.
     """
-    store = get_graph_store()
-    return store.calculate_risk_propagation(source_id=entity_id, decay=decay)
+    try:
+        store = get_graph_store()
+        return store.calculate_risk_propagation(source_id=entity_id, decay=decay)
+    except FalkorDBUnavailableError as exc:
+        return {"success": False, "error": f"FalkorDB is unavailable: {str(exc)}", "source_id": entity_id, "propagated_risks": {}, "max_propagated_risk": 0.0}
 
 
 def get_impact_analysis(entity_id: str, max_depth: int = 4) -> Dict[str, Any]:
     """
-    Determine the blast radius and all downstream assets, databases, and endpoints
-    that would be impacted if this entity is compromised or modified.
+    Determine blast radius and downstream assets in FalkorDB if entity is compromised.
     """
-    store = get_graph_store()
-    return store.get_blast_radius(entity_id=entity_id, max_depth=max_depth)
+    try:
+        store = get_graph_store()
+        return store.get_blast_radius(entity_id=entity_id, max_depth=max_depth)
+    except FalkorDBUnavailableError as exc:
+        return {"success": False, "error": f"FalkorDB is unavailable: {str(exc)}", "entity_id": entity_id, "blast_count": 0, "affected_nodes": []}
 
 
 def find_related_findings(entity_id: str) -> Dict[str, Any]:
     """
-    Find all security findings, alerts, and historical incidents associated
-    directly or via 1-2 hops with this entity.
+    Find all security findings and alerts in FalkorDB associated with this entity.
     """
-    store = get_graph_store()
-    node = store.get_node(entity_id)
-    if not node:
-        return {"entity_id": entity_id, "findings_count": 0, "findings": []}
+    try:
+        store = get_graph_store()
+        node = store.get_node(entity_id)
+        if not node:
+            return {"entity_id": entity_id, "findings_count": 0, "findings": []}
 
-    # Find neighbors of type Finding or Incident
-    neighbors = store.get_neighbors(node_id=entity_id, direction="both", max_depth=2)
-    associated_findings = []
-    for nbr in neighbors:
-        nbr_node = nbr.get("node", {})
-        if nbr_node.get("type") in (EntityType.FINDING.value, EntityType.INCIDENT.value, EntityType.VULNERABILITY.value):
-            associated_findings.append({
-                "id": nbr_node.get("id"),
-                "label": nbr_node.get("label"),
-                "type": nbr_node.get("type"),
-                "risk_level": nbr_node.get("risk_level", "HIGH"),
-                "distance": nbr.get("depth", 1),
-                "relationship": nbr.get("relationship"),
-            })
+        neighbors = store.get_neighbors(node_id=entity_id, direction="both", max_depth=2)
+        associated_findings = []
+        for nbr in neighbors:
+            nbr_node = nbr.get("node", {})
+            if nbr_node.get("type") in (EntityType.FINDING.value, EntityType.INCIDENT.value, EntityType.VULNERABILITY.value):
+                associated_findings.append({
+                    "id": nbr_node.get("id"),
+                    "label": nbr_node.get("label"),
+                    "type": nbr_node.get("type"),
+                    "risk_level": nbr_node.get("risk_level", "HIGH"),
+                    "distance": nbr.get("depth", 1),
+                    "relationship": nbr.get("relationship"),
+                })
 
-    return {
-        "entity_id": entity_id,
-        "findings_count": len(associated_findings),
-        "findings": associated_findings,
-    }
+        return {
+            "entity_id": entity_id,
+            "findings_count": len(associated_findings),
+            "findings": associated_findings,
+        }
+    except FalkorDBUnavailableError as exc:
+        return {"entity_id": entity_id, "findings_count": 0, "findings": [], "error": str(exc)}
 
 
 def register_analysis_tools(server: MCPServer) -> None:

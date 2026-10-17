@@ -56,7 +56,7 @@ async def test_investigations_api():
         assert res.status_code == 200
         inv = res.json()
         inv_id = inv["investigation_id"]
-        assert inv["status"] == "COMPLETED"
+        assert inv["status"] in ("COMPLETED", "AWAITING_HUMAN_APPROVAL"), f"Unexpected status: {inv['status']}"
         assert len(inv["timeline"]) >= 5
 
         # Get by ID

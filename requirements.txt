@@ -21,10 +21,11 @@ scikit-learn>=1.4.0
 numpy>=1.26.0
 accelerate>=0.29.0
 
-# ── Database & Graph ──────────────────────────────────────────────────────────
+# ── Database & Graph (FalkorDB Primary Engine) ──────────────────────────────
 motor>=3.4.0
 pymongo>=4.7.0
-neo4j>=5.15.0
+falkordb>=1.8.0
+redis>=5.0.0
 networkx>=3.2.0
 
 # ── Utilities ─────────────────────────────────────────────────────────────────

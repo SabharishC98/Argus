@@ -102,7 +102,7 @@ async def test_autonomous_investigation_scenario_1():
         target_entity="endpoint:payment-v1",
     )
 
-    assert state.status == "COMPLETED"
+    assert state.status in ("COMPLETED", "AWAITING_HUMAN_APPROVAL"), f"Unexpected status: {state.status}"
     assert len(state.timeline) >= 5, f"Expected >= 5 timeline events, got {len(state.timeline)}"
     assert len(state.discovered_paths) >= 1, "Agent should have discovered multi-hop path"
     assert state.risk_level in ("CRITICAL", "HIGH")
@@ -119,6 +119,6 @@ async def test_autonomous_investigation_scenario_2():
         target_entity="dep:pyjwt-vuln",
     )
 
-    assert state.status == "COMPLETED"
+    assert state.status in ("COMPLETED", "AWAITING_HUMAN_APPROVAL"), f"Unexpected status: {state.status}"
     assert state.risk_level in ("CRITICAL", "HIGH")
     assert any("patch_dependency" in str(a) for a in state.actions_taken)

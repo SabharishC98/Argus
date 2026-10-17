@@ -154,7 +154,8 @@ async def root():
         "name": "ShadowLens-Agent",
         "version": "2.0.0",
         "theme": "Agents That Act on Connected Data",
-        "description": "Autonomous Graph-Powered Investigation Agent with MCP Tool Calling",
+        "primary_graph_database": "FalkorDB",
+        "description": "Autonomous Graph-Powered Investigation Agent with FalkorDB openCypher & MCP Tool Calling",
         "docs": "/docs",
         "endpoints": {
             "investigations": "/api/investigations",

@@ -6,31 +6,39 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from src.graph.graph_store import get_graph_store
+from src.graph.falkordb_store import FalkorDBUnavailableError
 
 if TYPE_CHECKING:
     from src.mcp.server import MCPServer
 
 
 def search_entity(query: str = "", entity_type: Optional[str] = None) -> Dict[str, Any]:
-    """Search for nodes in the security graph by label, ID, or entity type."""
-    store = get_graph_store()
-    nodes = store.search_nodes(query=query, entity_type=entity_type)
-    return {
-        "count": len(nodes),
-        "entities": [n.to_dict() for n in nodes[:20]],
-    }
+    """Search for nodes in FalkorDB security graph by label, ID, or entity type."""
+    try:
+        store = get_graph_store()
+        nodes = store.search_nodes(query=query, entity_type=entity_type)
+        return {
+            "success": True,
+            "count": len(nodes),
+            "entities": [n.to_dict() for n in nodes[:20]],
+        }
+    except FalkorDBUnavailableError as exc:
+        return {"success": False, "count": 0, "entities": [], "error": str(exc)}
 
 
 def get_entity(entity_id: str) -> Dict[str, Any]:
-    """Retrieve full details, attributes, and risk level for a specific entity."""
-    store = get_graph_store()
-    node = store.get_node(entity_id)
-    if not node:
-        return {"found": False, "entity_id": entity_id, "error": f"Entity '{entity_id}' not found"}
-    return {
-        "found": True,
-        "entity": node.to_dict(),
-    }
+    """Retrieve full details, attributes, and risk level for a specific entity from FalkorDB."""
+    try:
+        store = get_graph_store()
+        node = store.get_node(entity_id)
+        if not node:
+            return {"found": False, "entity_id": entity_id, "error": f"Entity '{entity_id}' not found"}
+        return {
+            "found": True,
+            "entity": node.to_dict(),
+        }
+    except FalkorDBUnavailableError as exc:
+        return {"found": False, "entity_id": entity_id, "error": str(exc)}
 
 
 def get_neighbors(
@@ -40,79 +48,98 @@ def get_neighbors(
     max_depth: int = 1,
 ) -> Dict[str, Any]:
     """
-    Explore connected neighbors of an entity up to max_depth.
+    Explore connected neighbors of an entity in FalkorDB up to max_depth.
     Direction: 'out' (downstream calls/dependencies), 'in' (upstream callers), 'both'.
     """
-    store = get_graph_store()
-    neighbors = store.get_neighbors(
-        node_id=entity_id,
-        direction=direction,
-        relation_type=relationship_type,
-        max_depth=max_depth,
-    )
-    return {
-        "entity_id": entity_id,
-        "direction": direction,
-        "neighbor_count": len(neighbors),
-        "neighbors": neighbors,
-    }
+    try:
+        store = get_graph_store()
+        neighbors = store.get_neighbors(
+            node_id=entity_id,
+            direction=direction,
+            relation_type=relationship_type,
+            max_depth=max_depth,
+        )
+        return {
+            "success": True,
+            "entity_id": entity_id,
+            "direction": direction,
+            "neighbor_count": len(neighbors),
+            "neighbors": neighbors,
+        }
+    except FalkorDBUnavailableError as exc:
+        return {"success": False, "entity_id": entity_id, "neighbor_count": 0, "neighbors": [], "error": str(exc)}
 
 
 def find_path(source_id: str, target_id: str, max_hops: int = 6) -> Dict[str, Any]:
     """
-    Find multi-hop relationship path between source_id and target_id.
+    Find multi-hop relationship path in FalkorDB between source_id and target_id.
     Crucial for tracing attack vectors (e.g., endpoint to database vulnerability).
     """
-    store = get_graph_store()
-    path = store.find_shortest_path(source_id, target_id, max_hops=max_hops)
-    if not path:
+    try:
+        store = get_graph_store()
+        path = store.find_shortest_path(source_id, target_id, max_hops=max_hops)
+        if not path:
+            return {
+                "found": False,
+                "source_id": source_id,
+                "target_id": target_id,
+                "message": f"No connected path found within {max_hops} hops in FalkorDB.",
+            }
+        return {
+            "found": True,
+            "source_id": source_id,
+            "target_id": target_id,
+            "hop_count": path.hop_count,
+            "path_node_ids": [n.id for n in path.nodes],
+            "path_node_labels": [n.label for n in path.nodes],
+            "relationships": [e.type.value if hasattr(e.type, "value") else str(e.type) for e in path.edges],
+            "full_path": path.to_dict(),
+            "summary": " -> ".join([n.label for n in path.nodes]),
+        }
+    except FalkorDBUnavailableError as exc:
         return {
             "found": False,
             "source_id": source_id,
             "target_id": target_id,
-            "message": f"No connected path found within {max_hops} hops.",
+            "error": f"FalkorDB is unavailable: {str(exc)}",
+            "message": "Multi-hop pathfinding cannot proceed without FalkorDB.",
         }
-    return {
-        "found": True,
-        "source_id": source_id,
-        "target_id": target_id,
-        "hop_count": path.hop_count,
-        "path_node_ids": [n.id for n in path.nodes],
-        "path_node_labels": [n.label for n in path.nodes],
-        "relationships": [e.type.value if hasattr(e.type, "value") else str(e.type) for e in path.edges],
-        "full_path": path.to_dict(),
-        "summary": " -> ".join([n.label for n in path.nodes]),
-    }
 
 
 def get_subgraph(entity_id: str, depth: int = 2) -> Dict[str, Any]:
-    """Extract ego-subgraph centered around an entity for visualization."""
-    store = get_graph_store()
-    subgraph = store.get_subgraph(center_id=entity_id, depth=depth)
-    return {
-        "center_id": entity_id,
-        "depth": depth,
-        "node_count": len(subgraph.nodes),
-        "edge_count": len(subgraph.edges),
-        "subgraph": subgraph.to_dict(),
-    }
+    """Extract ego-subgraph centered around an entity from FalkorDB for visualization."""
+    try:
+        store = get_graph_store()
+        subgraph = store.get_subgraph(center_id=entity_id, depth=depth)
+        return {
+            "center_id": entity_id,
+            "depth": depth,
+            "node_count": len(subgraph.nodes),
+            "edge_count": len(subgraph.edges),
+            "subgraph": subgraph.to_dict(),
+        }
+    except FalkorDBUnavailableError as exc:
+        return {"center_id": entity_id, "depth": depth, "node_count": 0, "edge_count": 0, "error": str(exc)}
 
 
 def find_related_entities(entity_id: str, relationship_type: Optional[str] = None) -> Dict[str, Any]:
-    """Find all directly related entities filtered by relationship type."""
-    store = get_graph_store()
-    neighbors = store.get_neighbors(
-        node_id=entity_id,
-        direction="both",
-        relation_type=relationship_type,
-        max_depth=1,
-    )
-    return {
-        "entity_id": entity_id,
-        "relationship_type": relationship_type,
-        "count": len(neighbors),
-        "related": neighbors,
-    }
+    """Find all directly related entities in FalkorDB filtered by relationship type."""
+    try:
+        store = get_graph_store()
+        neighbors = store.get_neighbors(
+            node_id=entity_id,
+            direction="both",
+            relation_type=relationship_type,
+            max_depth=1,
+        )
+        return {
+            "entity_id": entity_id,
+            "relationship_type": relationship_type,
+            "count": len(neighbors),
+            "related": neighbors,
+        }
+    except FalkorDBUnavailableError as exc:
+        return {"entity_id": entity_id, "count": 0, "related": [], "error": str(exc)}
 
 
 def register_graph_tools(server: MCPServer) -> None:
