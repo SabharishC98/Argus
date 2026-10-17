@@ -201,6 +201,74 @@ def seed_security_graph(store: BaseGraphStore) -> None:
             properties={"remediation": "Restrict policy to Least Privilege"},
         ),
 
+        # Scenario 4 Nodes: Non-Obvious Graph Insight (MEDIUM -> CRITICAL Escalation)
+        GraphNode(
+            id="finding:sec-402-format-injection",
+            label="SEC-402: Minor Template String Formatting Anomaly",
+            type=EntityType.FINDING,
+            risk_level="MEDIUM",
+            risk_score=0.50,
+            properties={"initial_severity": "MEDIUM", "scanner": "StaticCodeAnalyzer", "source": "src/agent/formatter.py"},
+        ),
+        GraphNode(
+            id="func:format_agent_input",
+            label="format_agent_input(template, payload)",
+            type=EntityType.FUNCTION,
+            risk_level="MEDIUM",
+            risk_score=0.55,
+            properties={"file": "src/agent/formatter.py", "sanitization": "partial"},
+        ),
+        GraphNode(
+            id="service:agent_router",
+            label="AgentRouter.dispatch_task()",
+            type=EntityType.FUNCTION,
+            risk_level="HIGH",
+            risk_score=0.75,
+            properties={"file": "src/agent/router.py", "evaluates_dynamic_tools": True},
+        ),
+        GraphNode(
+            id="tool:cloud_admin_exec",
+            label="Privileged Tool: CloudAdminExec",
+            type=EntityType.API_ENDPOINT,
+            risk_level="CRITICAL",
+            risk_score=0.96,
+            properties={"is_privileged_tool": True, "capabilities": ["iam:PassRole", "kms:Decrypt", "cloud:ExecuteCommand"]},
+        ),
+        GraphNode(
+            id="cloud:kms_master_key",
+            label="AWS KMS Customer Vault Master Key (arn:aws:kms:us-east-1:prod:key/vault)",
+            type=EntityType.CLOUD_RESOURCE,
+            risk_level="CRITICAL",
+            risk_score=0.99,
+            properties={"encryption": "AES_GCM_256", "customer_secrets_protected": 1250000},
+        ),
+
+        # Scenario 5 Nodes: Ambiguous Case / Insufficient Evidence (Failure Honesty)
+        GraphNode(
+            id="finding:sec-801-sandbox-leak",
+            label="SEC-801: Unverified Memory Buffer Anomaly in Test Helper",
+            type=EntityType.FINDING,
+            risk_level="MEDIUM",
+            risk_score=0.45,
+            properties={"scanner": "ExperimentalFuzzer", "environment": "test_only", "isolated": True},
+        ),
+        GraphNode(
+            id="func:legacy_test_helper",
+            label="legacy_test_helper_alloc()",
+            type=EntityType.FUNCTION,
+            risk_level="LOW",
+            risk_score=0.25,
+            properties={"file": "tests/utils/legacy_helper.py"},
+        ),
+        GraphNode(
+            id="file:test_helpers.py",
+            label="tests/utils/legacy_helper.py",
+            type=EntityType.FILE,
+            risk_level="SAFE",
+            risk_score=0.10,
+            properties={"is_test": True},
+        ),
+
         # General Infrastructure Nodes (Safe / Baseline)
         GraphNode(
             id="repo:shadowlens-core",
@@ -269,6 +337,16 @@ def seed_security_graph(store: BaseGraphStore) -> None:
         GraphEdge(source="cloud:iam-role-worker", target="cloud:s3-prod-customer-backups", type=RelationType.AFFECTS, weight=1.0),
         GraphEdge(source="vuln:cve-2023-iam-wildcard", target="cloud:iam-role-worker", type=RelationType.AFFECTS, weight=1.0),
         GraphEdge(source="finding:sec-309-priv-esc", target="vuln:cve-2023-iam-wildcard", type=RelationType.RELATED_TO, weight=1.0),
+
+        # Scenario 4 Edges: Non-Obvious Graph Insight (MEDIUM -> CRITICAL Escalation)
+        GraphEdge(source="finding:sec-402-format-injection", target="func:format_agent_input", type=RelationType.OBSERVED_IN, weight=1.0),
+        GraphEdge(source="func:format_agent_input", target="service:agent_router", type=RelationType.CALLS, weight=1.0),
+        GraphEdge(source="service:agent_router", target="tool:cloud_admin_exec", type=RelationType.TRIGGERS, weight=1.0),
+        GraphEdge(source="tool:cloud_admin_exec", target="cloud:kms_master_key", type=RelationType.AFFECTS, weight=1.0),
+
+        # Scenario 5 Edges: Ambiguous Case / Insufficient Evidence (Disconnected Subgraph)
+        GraphEdge(source="finding:sec-801-sandbox-leak", target="func:legacy_test_helper", type=RelationType.OBSERVED_IN, weight=1.0),
+        GraphEdge(source="func:legacy_test_helper", target="file:test_helpers.py", type=RelationType.CONTAINS, weight=1.0),
 
         # Baseline edges
         GraphEdge(source="repo:shadowlens-core", target="file:config.py", type=RelationType.CONTAINS, weight=1.0),

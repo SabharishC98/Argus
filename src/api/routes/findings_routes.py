@@ -11,7 +11,9 @@ from pydantic import BaseModel, Field
 from src.mcp.tools.action_tools import (
     ACTIONS_REGISTRY,
     FINDINGS_REGISTRY,
+    approve_action,
     create_finding,
+    reject_action,
     take_remediation_action,
     update_finding,
 )
@@ -104,3 +106,32 @@ async def get_single_action(action_id: str):
     if action_id not in ACTIONS_REGISTRY:
         raise HTTPException(status_code=404, detail="Action receipt not found")
     return ACTIONS_REGISTRY[action_id]
+
+
+class ApproveActionRequest(BaseModel):
+    approver: str = "security_lead"
+
+
+class RejectActionRequest(BaseModel):
+    reason: str = "Rejected by security operator"
+
+
+@router_actions.post("/{action_id}/approve")
+async def approve_single_action(action_id: str, req: Optional[ApproveActionRequest] = None):
+    """Human-in-the-loop: Approve and execute a proposed high-risk remediation action."""
+    approver = req.approver if req else "security_lead"
+    res = approve_action(action_id=action_id, approver=approver)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error"))
+    return res
+
+
+@router_actions.post("/{action_id}/reject")
+async def reject_single_action(action_id: str, req: Optional[RejectActionRequest] = None):
+    """Human-in-the-loop: Reject a proposed remediation action."""
+    reason = req.reason if req else "Rejected by security operator"
+    res = reject_action(action_id=action_id, reason=reason)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error"))
+    return res
+

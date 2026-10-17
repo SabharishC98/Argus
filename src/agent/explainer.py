@@ -55,19 +55,48 @@ class Explainer:
                 "verification_hash": act.get("verification_hash"),
             })
 
+        # 5. Severity escalation explanation (Requirement 3)
+        escalation_data = None
+        if state.severity_escalation:
+            escalation_data = state.severity_escalation
+            evidence_points.insert(
+                0,
+                f"SEVERITY ESCALATION: Initial finding rated {escalation_data.get('initial')}, but graph traversal revealed a 4-hop path to {escalation_data.get('discovered_capability', 'privileged capability')}. Escalated to {escalation_data.get('escalated')}."
+            )
+
+        # 6. Failure honesty / Uncertainty (Requirement 5)
+        uncertainty = state.uncertainty_state
+        if uncertainty == "INSUFFICIENT_EVIDENCE":
+            exec_summary = (
+                f"INSUFFICIENT EVIDENCE: ShadowLens Agent investigated '{state.target_entity or state.query}' across the connected graph. "
+                f"While localized anomalies exist in the component's perimeter, the graph confirmed NO complete execution or reachability path connects to sensitive production datastores, KMS keys, or privileged roles. "
+                f"Honest assessment: Missing necessary evidence for automated containment. Escalated to human security review without taking unverified disruptive action."
+            )
+        elif escalation_data:
+            exec_summary = (
+                f"NON-OBVIOUS GRAPH INSIGHT: Isolated finding '{state.target_entity}' was evaluated as {escalation_data.get('initial')} risk. "
+                f"Graph multi-hop reasoning proved that input flows 4 hops into privileged {escalation_data.get('discovered_capability')}, directly threatening {escalation_data.get('affected_target', 'sensitive resources')}. "
+                f"Severity escalated from {escalation_data.get('initial')} → {escalation_data.get('escalated')}."
+            )
+        else:
+            exec_summary = (
+                f"ShadowLens Agent investigated '{state.target_entity or state.query}' across connected graph data. "
+                f"The investigation confirmed {risk_level} security risk across a {len(state.visited_entities)} entity neighborhood. "
+                + (f"A {state.discovered_paths[0].get('hop_count')}-hop attack vector reaches critical production assets. " if state.discovered_paths else "")
+                + f"Remediation actions proposed with verified blast-radius impact analysis."
+            )
+
         return {
             "investigation_id": state.investigation_id,
             "target_entity": state.target_entity,
             "risk_level": risk_level,
             "risk_score": risk_score,
+            "uncertainty_state": uncertainty,
+            "severity_escalation": escalation_data,
             "decision": state.decision or f"CONFIRMED_{risk_level}_RISK",
             "path_summary": path_summary,
             "evidence_chain": evidence_points,
             "actions_executed": actions_summary,
-            "executive_summary": (
-                f"ShadowLens Agent investigated '{state.target_entity or state.query}' across connected graph data. "
-                f"The investigation confirmed {risk_level} security risk across a {len(state.visited_entities)} entity neighborhood. "
-                + (f"A {state.discovered_paths[0].get('hop_count')}-hop attack vector reaches critical production assets. " if state.discovered_paths else "")
-                + f"Autonomous remediation was initiated with {len(state.actions_taken)} verified defensive action(s)."
-            ),
+            "pending_actions": state.pending_actions,
+            "executive_summary": exec_summary,
         }

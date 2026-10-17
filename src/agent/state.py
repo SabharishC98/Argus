@@ -39,8 +39,12 @@ class InvestigationState(BaseModel):
     tool_calls: List[Dict[str, Any]] = Field(default_factory=list)
     risk_score: Optional[float] = None
     risk_level: Optional[str] = None  # CRITICAL, HIGH, MEDIUM, LOW, SAFE
+    uncertainty_state: str = "CONFIRMED"  # CONFIRMED, HIGH_CONFIDENCE, PARTIAL_EVIDENCE, INSUFFICIENT_EVIDENCE, ESCALATED
+    severity_escalation: Optional[Dict[str, Any]] = None
+    recommended_next_step: Optional[str] = None
     decision: Optional[str] = None
     actions_taken: List[Dict[str, Any]] = Field(default_factory=list)
+    pending_actions: List[Dict[str, Any]] = Field(default_factory=list)
     timeline: List[TimelineEvent] = Field(default_factory=list)
     explanation: Optional[Dict[str, Any]] = None
     created_at: str = Field(default_factory=lambda: datetime.datetime.utcnow().isoformat() + "Z")

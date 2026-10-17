@@ -1,0 +1,426 @@
+"""
+Ground-Truth Evaluation Dataset for ShadowLens-Agent.
+Contains 18 attack-path scenarios with independently established ground truth.
+Includes 15 multi-hop attack paths and 3 ambiguous/disconnected scenarios to test failure honesty.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import List, Tuple, Dict, Any
+
+
+@dataclass
+class EvalScenario:
+    scenario_id: str
+    repository: str
+    title: str
+    entry_point: str
+    target: str
+    ground_truth_path: List[str]
+    ground_truth_edges: List[Tuple[str, str]]
+    initial_severity: str
+    ground_truth_severity: str
+    has_valid_path: bool
+    description: str
+    raw_text_context: str
+    is_escalation: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "scenario_id": self.scenario_id,
+            "repository": self.repository,
+            "title": self.title,
+            "entry_point": self.entry_point,
+            "target": self.target,
+            "ground_truth_path": self.ground_truth_path,
+            "hop_count": len(self.ground_truth_path) - 1 if self.ground_truth_path else 0,
+            "initial_severity": self.initial_severity,
+            "ground_truth_severity": self.ground_truth_severity,
+            "has_valid_path": self.has_valid_path,
+            "description": self.description,
+            "is_escalation": self.is_escalation,
+        }
+
+
+EVAL_SCENARIOS: List[EvalScenario] = [
+    # ── 1. Multi-hop Injection & Exfiltration Chains (Connected) ───────────────
+    EvalScenario(
+        scenario_id="SCENARIO-01",
+        repository="shadowlens/payment-gateway",
+        title="5-Hop API Parameter to Production DB Injection",
+        entry_point="endpoint:payment-v1",
+        target="db:prod-payments-db",
+        ground_truth_path=[
+            "endpoint:payment-v1",
+            "controller:payment-controller",
+            "service:transaction-service",
+            "repo:payment-repo",
+            "query:raw-sql-executor",
+            "db:prod-payments-db",
+        ],
+        ground_truth_edges=[
+            ("endpoint:payment-v1", "controller:payment-controller"),
+            ("controller:payment-controller", "service:transaction-service"),
+            ("service:transaction-service", "repo:payment-repo"),
+            ("repo:payment-repo", "query:raw-sql-executor"),
+            ("query:raw-sql-executor", "db:prod-payments-db"),
+        ],
+        initial_severity="MEDIUM",
+        ground_truth_severity="CRITICAL",
+        has_valid_path=True,
+        description="Public payment endpoint flows through controller, transaction service, and repository to raw SQL executor on payments DB.",
+        raw_text_context="Alert: Input validation missing on transaction filter query parameter in payment-v1. PaymentController imports TransactionService. Service calls PaymentRepository.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-02",
+        repository="shadowlens/auth-core",
+        title="Compromised JWT Dependency Blast Radius to Admin Gateway",
+        entry_point="dep:pyjwt-vuln",
+        target="endpoint:admin-portal",
+        ground_truth_path=[
+            "dep:pyjwt-vuln",
+            "func:verify_token",
+            "endpoint:admin-portal",
+        ],
+        ground_truth_edges=[
+            ("func:verify_token", "dep:pyjwt-vuln"),
+            ("endpoint:admin-portal", "func:verify_token"),
+        ],
+        initial_severity="HIGH",
+        ground_truth_severity="CRITICAL",
+        has_valid_path=True,
+        description="Compromised PyJWT token validation dependency reaches admin portal auth verification.",
+        raw_text_context="Dependency alert: pyjwt==2.4.0 CVE-2022-29217 key confusion. verify_token() uses PyJWT. Admin portal uses verify_token for authorization.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-03",
+        repository="shadowlens/agent-runtime",
+        title="Agent Tool Privilege Escalation to S3 Backup Bucket",
+        entry_point="finding:sec-309-priv-esc",
+        target="cloud:s3-prod-customer-backups",
+        ground_truth_path=[
+            "finding:sec-309-priv-esc",
+            "func:execute_tool_action",
+            "agent:tool-caller",
+            "cloud:iam-role-worker",
+            "cloud:s3-prod-customer-backups",
+        ],
+        ground_truth_edges=[
+            ("finding:sec-309-priv-esc", "func:execute_tool_action"),
+            ("func:execute_tool_action", "agent:tool-caller"),
+            ("agent:tool-caller", "cloud:iam-role-worker"),
+            ("cloud:iam-role-worker", "cloud:s3-prod-customer-backups"),
+        ],
+        initial_severity="HIGH",
+        ground_truth_severity="CRITICAL",
+        has_valid_path=True,
+        description="Unvalidated tool call in agent router assumes IAM worker role possessing full S3 wildcard access.",
+        raw_text_context="Finding SEC-309: Unvalidated parameters in tool caller. Worker subagent executes with AgentWorkerRole. IAM role has s3:* permissions.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-04",
+        repository="shadowlens/agent-orchestrator",
+        title="Non-Obvious Insight: Template Formatting to KMS Master Key",
+        entry_point="finding:sec-402-format-injection",
+        target="cloud:kms_master_key",
+        ground_truth_path=[
+            "finding:sec-402-format-injection",
+            "func:format_agent_input",
+            "service:agent_router",
+            "tool:cloud_admin_exec",
+            "cloud:kms_master_key",
+        ],
+        ground_truth_edges=[
+            ("finding:sec-402-format-injection", "func:format_agent_input"),
+            ("func:format_agent_input", "service:agent_router"),
+            ("service:agent_router", "tool:cloud_admin_exec"),
+            ("tool:cloud_admin_exec", "cloud:kms_master_key"),
+        ],
+        initial_severity="MEDIUM",
+        ground_truth_severity="CRITICAL",
+        has_valid_path=True,
+        is_escalation=True,
+        description="Harmless-looking template string flaw reaches privileged CloudAdminExec tool capable of decrypting the production KMS master key.",
+        raw_text_context="Finding SEC-402: Template string formatting anomaly in format_agent_input. Severity: MEDIUM. Formatter feeds into AgentRouter dispatch.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-05",
+        repository="shadowlens/payment-gateway",
+        title="SQL Injection Exploit Vector to Payment DB",
+        entry_point="vuln:cve-2024-sql-injection",
+        target="db:prod-payments-db",
+        ground_truth_path=[
+            "vuln:cve-2024-sql-injection",
+            "db:prod-payments-db",
+        ],
+        ground_truth_edges=[
+            ("vuln:cve-2024-sql-injection", "db:prod-payments-db"),
+        ],
+        initial_severity="HIGH",
+        ground_truth_severity="CRITICAL",
+        has_valid_path=True,
+        description="Direct vulnerability impact from dynamic query builder to production payments datastore.",
+        raw_text_context="CVE-2024-5120 affects dynamic SQL query generator in payment datastore layer.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-06",
+        repository="shadowlens/auth-core",
+        title="API Gateway to Sensitive Tenant Portal via Verify Token",
+        entry_point="endpoint:api-gateway",
+        target="account:admin-root",
+        ground_truth_path=[
+            "endpoint:api-gateway",
+            "endpoint:admin-portal",
+            "account:admin-root",
+        ],
+        ground_truth_edges=[
+            ("endpoint:api-gateway", "endpoint:admin-portal"),
+            ("account:admin-root", "endpoint:admin-portal"),
+        ],
+        initial_severity="MEDIUM",
+        ground_truth_severity="HIGH",
+        has_valid_path=True,
+        description="Edge API gateway exposes admin portal endpoint holding association with root admin account.",
+        raw_text_context="API Gateway forwards traffic to /api/v1/admin/tenants. Endpoint manages root admin tenant sessions.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-07",
+        repository="shadowlens/payment-gateway",
+        title="User HTTP Payload to Payment Controller",
+        entry_point="input:user-query",
+        target="controller:payment-controller",
+        ground_truth_path=[
+            "input:user-query",
+            "endpoint:payment-v1",
+            "controller:payment-controller",
+        ],
+        ground_truth_edges=[
+            ("input:user-query", "endpoint:payment-v1"),
+            ("endpoint:payment-v1", "controller:payment-controller"),
+        ],
+        initial_severity="LOW",
+        ground_truth_severity="MEDIUM",
+        has_valid_path=True,
+        description="Untrusted user input payload reaches payment controller without sanitization.",
+        raw_text_context="External HTTP POST payload arrives at /api/v1/payments/process and gets passed to PaymentController.process().",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-08",
+        repository="shadowlens/agent-runtime",
+        title="IAM Wildcard Vulnerability to S3 Backups",
+        entry_point="vuln:cve-2023-iam-wildcard",
+        target="cloud:s3-prod-customer-backups",
+        ground_truth_path=[
+            "vuln:cve-2023-iam-wildcard",
+            "cloud:iam-role-worker",
+            "cloud:s3-prod-customer-backups",
+        ],
+        ground_truth_edges=[
+            ("vuln:cve-2023-iam-wildcard", "cloud:iam-role-worker"),
+            ("cloud:iam-role-worker", "cloud:s3-prod-customer-backups"),
+        ],
+        initial_severity="MEDIUM",
+        ground_truth_severity="HIGH",
+        has_valid_path=True,
+        description="Over-permissive wildcard role policy grants read/write to production customer backups.",
+        raw_text_context="CVE-2023-3801: Excessive wildcard policy assigned to AgentWorkerRole. Worker role attaches to production backup storage.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-09",
+        repository="shadowlens/auth-core",
+        title="Internal Auth Package to Admin Portal",
+        entry_point="pkg:auth-token-core",
+        target="endpoint:admin-portal",
+        ground_truth_path=[
+            "pkg:auth-token-core",
+            "file:jwt_handler.py",
+            "func:verify_token",
+            "endpoint:admin-portal",
+        ],
+        ground_truth_edges=[
+            ("file:jwt_handler.py", "pkg:auth-token-core"),
+            ("file:jwt_handler.py", "func:verify_token"),
+            ("endpoint:admin-portal", "func:verify_token"),
+        ],
+        initial_severity="MEDIUM",
+        ground_truth_severity="HIGH",
+        has_valid_path=True,
+        description="Internal security package imported by jwt_handler is called by admin portal endpoint.",
+        raw_text_context="auth-token-core internal library is imported in jwt_handler.py which exports verify_token to admin endpoints.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-10",
+        repository="shadowlens/payment-gateway",
+        title="Transaction Service to Raw SQL Query",
+        entry_point="service:transaction-service",
+        target="query:raw-sql-executor",
+        ground_truth_path=[
+            "service:transaction-service",
+            "repo:payment-repo",
+            "query:raw-sql-executor",
+        ],
+        ground_truth_edges=[
+            ("service:transaction-service", "repo:payment-repo"),
+            ("repo:payment-repo", "query:raw-sql-executor"),
+        ],
+        initial_severity="MEDIUM",
+        ground_truth_severity="HIGH",
+        has_valid_path=True,
+        description="Transaction service delegates to payment repository which constructs raw unparameterized SQL query.",
+        raw_text_context="TransactionService.execute() calls PaymentRepository.find_by_filter() which invokes raw SQL query executor.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-11",
+        repository="shadowlens/agent-orchestrator",
+        title="Input Formatter to Privileged Cloud Execution Tool",
+        entry_point="func:format_agent_input",
+        target="tool:cloud_admin_exec",
+        ground_truth_path=[
+            "func:format_agent_input",
+            "service:agent_router",
+            "tool:cloud_admin_exec",
+        ],
+        ground_truth_edges=[
+            ("func:format_agent_input", "service:agent_router"),
+            ("service:agent_router", "tool:cloud_admin_exec"),
+        ],
+        initial_severity="LOW",
+        ground_truth_severity="CRITICAL",
+        has_valid_path=True,
+        description="Prompt formatter feeds directly into AgentRouter which triggers privileged CloudAdminExec tool.",
+        raw_text_context="format_agent_input outputs prompt string to agent router. Router has access to CloudAdminExec tool.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-12",
+        repository="shadowlens/payment-gateway",
+        title="Payment Controller to Raw SQL Query Executor",
+        entry_point="controller:payment-controller",
+        target="query:raw-sql-executor",
+        ground_truth_path=[
+            "controller:payment-controller",
+            "service:transaction-service",
+            "repo:payment-repo",
+            "query:raw-sql-executor",
+        ],
+        ground_truth_edges=[
+            ("controller:payment-controller", "service:transaction-service"),
+            ("service:transaction-service", "repo:payment-repo"),
+            ("repo:payment-repo", "query:raw-sql-executor"),
+        ],
+        initial_severity="MEDIUM",
+        ground_truth_severity="HIGH",
+        has_valid_path=True,
+        description="PaymentController call chain reaches raw SQL query executor in 3 hops.",
+        raw_text_context="PaymentController invokes TransactionService which calls PaymentRepository invoking raw SQL query executor.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-13",
+        repository="shadowlens/auth-core",
+        title="JWT Handler to Authentication Login Endpoint",
+        entry_point="file:jwt_handler.py",
+        target="endpoint:auth-login",
+        ground_truth_path=[
+            "file:jwt_handler.py",
+            "func:verify_token",
+            "endpoint:auth-login",
+        ],
+        ground_truth_edges=[
+            ("file:jwt_handler.py", "func:verify_token"),
+            ("endpoint:auth-login", "func:verify_token"),
+        ],
+        initial_severity="LOW",
+        ground_truth_severity="MEDIUM",
+        has_valid_path=True,
+        description="jwt_handler.py defines verify_token which validates requests on /api/v1/auth/login.",
+        raw_text_context="jwt_handler.py implements verify_token used for incoming requests on auth login route.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-14",
+        repository="shadowlens/agent-orchestrator",
+        title="Agent Router to Customer Vault KMS Key",
+        entry_point="service:agent_router",
+        target="cloud:kms_master_key",
+        ground_truth_path=[
+            "service:agent_router",
+            "tool:cloud_admin_exec",
+            "cloud:kms_master_key",
+        ],
+        ground_truth_edges=[
+            ("service:agent_router", "tool:cloud_admin_exec"),
+            ("tool:cloud_admin_exec", "cloud:kms_master_key"),
+        ],
+        initial_severity="HIGH",
+        ground_truth_severity="CRITICAL",
+        has_valid_path=True,
+        description="AgentRouter tool execution permission directly triggers KMS master key access.",
+        raw_text_context="AgentRouter dispatches commands to CloudAdminExec which can decrypt customer secrets in KMS vault.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-15",
+        repository="shadowlens/payment-gateway",
+        title="API Endpoint to Payment Repository",
+        entry_point="endpoint:payment-v1",
+        target="repo:payment-repo",
+        ground_truth_path=[
+            "endpoint:payment-v1",
+            "controller:payment-controller",
+            "service:transaction-service",
+            "repo:payment-repo",
+        ],
+        ground_truth_edges=[
+            ("endpoint:payment-v1", "controller:payment-controller"),
+            ("controller:payment-controller", "service:transaction-service"),
+            ("service:transaction-service", "repo:payment-repo"),
+        ],
+        initial_severity="LOW",
+        ground_truth_severity="HIGH",
+        has_valid_path=True,
+        description="Payment endpoint execution flow reaches internal repository layer in 3 hops.",
+        raw_text_context="Endpoint payment-v1 triggers PaymentController which delegates to TransactionService calling PaymentRepository.",
+    ),
+
+    # ── 2. Disconnected & Ambiguous Scenarios (Testing Failure Honesty) ───────
+    EvalScenario(
+        scenario_id="SCENARIO-16",
+        repository="shadowlens/test-suite",
+        title="Ambiguous Finding: Disconnected Test Helper Anomaly",
+        entry_point="finding:sec-801-sandbox-leak",
+        target="db:prod-payments-db",
+        ground_truth_path=[],
+        ground_truth_edges=[],
+        initial_severity="MEDIUM",
+        ground_truth_severity="SAFE",
+        has_valid_path=False,
+        description="Finding SEC-801 on test helper is completely disconnected from production database. The agent must report INSUFFICIENT EVIDENCE and NOT invent a path.",
+        raw_text_context="Finding SEC-801 reported memory buffer anomaly on legacy_test_helper_alloc in tests/utils. Production database stores payments in RDS cluster.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-17",
+        repository="shadowlens/core-config",
+        title="Isolated Configuration File to Cloud KMS Key",
+        entry_point="file:config.py",
+        target="cloud:kms_master_key",
+        ground_truth_path=[],
+        ground_truth_edges=[],
+        initial_severity="LOW",
+        ground_truth_severity="SAFE",
+        has_valid_path=False,
+        description="Local pipeline config file has no route, permission, or execution path to cloud KMS master key.",
+        raw_text_context="config.py contains local pipeline dataclasses. KMS master key is deployed in AWS us-east-1.",
+    ),
+    EvalScenario(
+        scenario_id="SCENARIO-18",
+        repository="shadowlens/test-suite",
+        title="Test Helper to Production S3 Backups",
+        entry_point="func:legacy_test_helper",
+        target="cloud:s3-prod-customer-backups",
+        ground_truth_path=[],
+        ground_truth_edges=[],
+        initial_severity="LOW",
+        ground_truth_severity="SAFE",
+        has_valid_path=False,
+        description="Isolated test function has no IAM association or caller path to production S3 backups.",
+        raw_text_context="legacy_test_helper is a unit test utility. S3 customer backup bucket requires AWS IAM AgentWorkerRole.",
+    ),
+]

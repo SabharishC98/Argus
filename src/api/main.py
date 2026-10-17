@@ -98,12 +98,16 @@ from src.api.routes.investigations import router as investigations_router
 from src.api.routes.graph_routes import router as graph_router
 from src.api.routes.mcp_routes import router as mcp_router
 from src.api.routes.findings_routes import router_findings, router_actions
+from src.api.routes.ingestion_routes import router as ingestion_router
+from src.api.routes.evaluation_routes import router as evaluation_router
 
 app.include_router(investigations_router)
 app.include_router(graph_router)
 app.include_router(mcp_router)
 app.include_router(router_findings)
 app.include_router(router_actions)
+app.include_router(ingestion_router)
+app.include_router(evaluation_router)
 
 # Original ShadowLens Routers (Retained for backward compatibility)
 from src.api.routes.runs import router as runs_router
@@ -158,6 +162,8 @@ async def root():
             "mcp_tools": "/api/mcp/tools",
             "findings": "/api/findings",
             "actions": "/api/actions",
+            "ingestion": "/api/ingestion",
+            "evaluation": "/api/evaluation",
             "health": "/api/health",
         },
     }

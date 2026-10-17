@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Activity, FlaskConical, History, Network, Compass, ShieldAlert, Cpu } from 'lucide-react';
+import { Activity, FlaskConical, History, Network, Compass, ShieldAlert, Cpu, BarChart3 } from 'lucide-react';
 import InvestigationView from './views/InvestigationView';
 import GraphExplorerView from './views/GraphExplorerView';
 import FindingsView from './views/FindingsView';
+import EvaluationView from './views/EvaluationView';
 import AttackGraphView from './views/AttackGraphView';
 import LiveMonitor from './views/LiveMonitor';
 import RunHistory from './views/RunHistory';
@@ -10,16 +11,17 @@ import ExperimentRunner from './views/ExperimentRunner';
 import { api, type HealthStatus } from './services/api';
 import './index.css';
 
-type View = 'investigation' | 'explorer' | 'findings' | 'graph' | 'monitor' | 'history' | 'experiment';
+type View = 'investigation' | 'explorer' | 'findings' | 'evaluation' | 'graph' | 'monitor' | 'history' | 'experiment';
 
 const NAV_ITEMS = [
   { id: 'investigation', label: 'Agent Investigation', icon: Compass, code: '01' },
   { id: 'explorer',      label: 'Graph Explorer',     icon: Network, code: '02' },
   { id: 'findings',      label: 'Findings & Actions',  icon: ShieldAlert, code: '03' },
-  { id: 'graph',         label: 'Attack Graph (Lab)',  icon: Activity, code: '04' },
-  { id: 'monitor',       label: 'Live Monitor',        icon: Cpu, code: '05' },
-  { id: 'history',       label: 'Run Archive',         icon: History, code: '06' },
-  { id: 'experiment',    label: 'Experiments',         icon: FlaskConical, code: '07' },
+  { id: 'evaluation',    label: 'Measured Results',    icon: BarChart3, code: '04' },
+  { id: 'graph',         label: 'Attack Graph (Lab)',  icon: Activity, code: '05' },
+  { id: 'monitor',       label: 'Live Monitor',        icon: Cpu, code: '06' },
+  { id: 'history',       label: 'Run Archive',         icon: History, code: '07' },
+  { id: 'experiment',    label: 'Experiments',         icon: FlaskConical, code: '08' },
 ] as const;
 
 export default function App() {
@@ -107,6 +109,7 @@ export default function App() {
         {view === 'investigation' && <InvestigationView />}
         {view === 'explorer' && <GraphExplorerView />}
         {view === 'findings' && <FindingsView />}
+        {view === 'evaluation' && <EvaluationView />}
         {view === 'graph' && <AttackGraphView onRunStarted={setActiveRunId} />}
         {view === 'monitor' && <LiveMonitor runId={activeRunId} />}
         {view === 'history' && <RunHistory />}

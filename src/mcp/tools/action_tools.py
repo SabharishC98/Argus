@@ -40,12 +40,16 @@ class ActionReceipt(BaseModel):
     action_id: str
     action_type: str
     target_entity_id: str
-    status: str  # "SIMULATED_SUCCESS", "EXECUTED_SUCCESS", "FAILED"
+    status: str  # "PROPOSED", "AWAITING_APPROVAL", "APPROVED", "REJECTED", "EXECUTED", "FAILED"
     simulation_mode: bool
     summary: str
     details: Dict[str, Any]
+    blast_radius_preview: Dict[str, Any] = Field(default_factory=dict)
     timestamp: str
     verification_hash: str
+    approved_by: Optional[str] = None
+    approved_at: Optional[str] = None
+    rejection_reason: Optional[str] = None
 
 
 # Global In-Memory Registries (can also be synced with MongoDB)
@@ -147,42 +151,45 @@ def take_remediation_action(
     target_entity_id: str,
     parameters: Optional[Dict[str, Any]] = None,
     simulation: bool = True,
+    require_approval: bool = True,
 ) -> Dict[str, Any]:
     """
-    Execute autonomous remediation on the target entity based on discovered graph evidence.
-    Supported action types:
-    - 'quarantine_endpoint': Temporarily disable or rate-limit suspicious API endpoint
-    - 'revoke_iam_permission': Revoke wildcard or excessive cloud IAM policies
-    - 'patch_dependency': Pin dependency to secure patched version (e.g., PyJWT 2.4.1)
-    - 'block_input_source': Apply WAF IP / payload filter rule
-    - 'isolate_database_table': Enforce parameterized query guardrails on sensitive DB
+    Proposes or executes autonomous remediation on the target entity based on discovered graph evidence.
+    Consequential actions default to requiring human approval (require_approval=True),
+    computing a pre-execution graph blast radius preview.
     """
     action_id = f"ACT-{uuid.uuid4().hex[:8].upper()}"
     now_iso = datetime.datetime.utcnow().isoformat() + "Z"
     params = parameters or {}
+
+    # 1. Compute Graph Blast Radius Preview
+    store = get_graph_store()
+    blast_radius = store.get_blast_radius(target_entity_id, max_depth=4)
 
     # Verification cryptographic proof
     proof_material = f"{action_id}:{action_type}:{target_entity_id}:{now_iso}:{simulation}"
     v_hash = hashlib.sha256(proof_material.encode("utf-8")).hexdigest()[:16]
 
     action_summaries = {
-        "quarantine_endpoint": f"Enforced ingress traffic isolation and WAF rate-limit on endpoint '{target_entity_id}'.",
-        "revoke_iam_permission": f"Revoked wildcard privileges on IAM role '{target_entity_id}' and enforced Least-Privilege policy.",
-        "patch_dependency": f"Dispatched automated dependency bump and security pin for '{target_entity_id}'.",
-        "block_input_source": f"Blacklisted malicious input vectors reaching '{target_entity_id}'.",
-        "isolate_database_table": f"Activated strict query param validation and connection isolation for '{target_entity_id}'.",
+        "quarantine_endpoint": f"Enforce ingress traffic isolation and rate-limiting on endpoint '{target_entity_id}'.",
+        "revoke_iam_permission": f"Revoke wildcard privileges on IAM role '{target_entity_id}' and enforce Least Privilege.",
+        "patch_dependency": f"Dispatch automated dependency bump and security pin for '{target_entity_id}'.",
+        "block_input_source": f"Blacklist malicious input vectors reaching '{target_entity_id}'.",
+        "isolate_database_table": f"Enforce query param validation and connection isolation for '{target_entity_id}'.",
     }
 
     summary = action_summaries.get(
         action_type,
-        f"Autonomous remediation '{action_type}' triggered on target '{target_entity_id}'.",
+        f"Remediation '{action_type}' on target '{target_entity_id}'.",
     )
+
+    initial_status = "AWAITING_APPROVAL" if require_approval else ("SIMULATED_SUCCESS" if simulation else "EXECUTED_SUCCESS")
 
     receipt = ActionReceipt(
         action_id=action_id,
         action_type=action_type,
         target_entity_id=target_entity_id,
-        status="SIMULATED_SUCCESS" if simulation else "EXECUTED_SUCCESS",
+        status=initial_status,
         simulation_mode=simulation,
         summary=summary,
         details={
@@ -191,19 +198,19 @@ def take_remediation_action(
             "rollback_plan": f"Restore original state via ID {action_id}-ROLLBACK",
             "enforcement_agent": "ShadowLens Autonomous Response Agent",
         },
+        blast_radius_preview=blast_radius,
         timestamp=now_iso,
         verification_hash=v_hash,
     )
     ACTIONS_REGISTRY[action_id] = receipt
 
     # Update node risk level in graph store
-    store = get_graph_store()
     node = store.get_node(target_entity_id)
     if node:
         node.properties["remediation_action_id"] = action_id
-        node.properties["remediation_status"] = "MITIGATED (SIMULATION)" if simulation else "MITIGATED"
+        node.properties["remediation_status"] = "AWAITING_APPROVAL" if require_approval else ("MITIGATED (SIMULATION)" if simulation else "MITIGATED")
 
-    logger.info(f"Remediation action {action_id} [{action_type}] on {target_entity_id} - Simulation: {simulation}")
+    logger.info(f"Remediation action {action_id} [{action_type}] on {target_entity_id} - Status: {initial_status} - Blast Radius: {blast_radius.get('blast_count')} nodes")
     return {
         "success": True,
         "action_id": action_id,
@@ -212,7 +219,65 @@ def take_remediation_action(
         "simulation": simulation,
         "status": receipt.status,
         "summary": summary,
+        "blast_radius_preview": blast_radius,
         "verification_hash": v_hash,
+        "receipt": receipt.model_dump(),
+    }
+
+
+def approve_action(action_id: str, approver: str = "security_lead") -> Dict[str, Any]:
+    """Approves and executes a proposed action requiring human approval."""
+    if action_id not in ACTIONS_REGISTRY:
+        return {"success": False, "error": f"Action ID '{action_id}' not found"}
+
+    receipt = ACTIONS_REGISTRY[action_id]
+    if receipt.status != "AWAITING_APPROVAL":
+        return {"success": False, "error": f"Action is already in status '{receipt.status}'"}
+
+    now_iso = datetime.datetime.utcnow().isoformat() + "Z"
+    receipt.status = "EXECUTED_SIMULATION" if receipt.simulation_mode else "EXECUTED"
+    receipt.approved_by = approver
+    receipt.approved_at = now_iso
+
+    # Update node in graph
+    store = get_graph_store()
+    node = store.get_node(receipt.target_entity_id)
+    if node:
+        node.properties["remediation_status"] = "APPROVED & ENFORCED (SIMULATION)" if receipt.simulation_mode else "APPROVED & ENFORCED"
+        node.risk_level = "LOW"
+
+    logger.info(f"Action {action_id} APPROVED by {approver}. New status: {receipt.status}")
+    return {
+        "success": True,
+        "action_id": action_id,
+        "status": receipt.status,
+        "approved_by": approver,
+        "approved_at": now_iso,
+        "receipt": receipt.model_dump(),
+    }
+
+
+def reject_action(action_id: str, reason: str = "Rejected by operator") -> Dict[str, Any]:
+    """Rejects a proposed action."""
+    if action_id not in ACTIONS_REGISTRY:
+        return {"success": False, "error": f"Action ID '{action_id}' not found"}
+
+    receipt = ACTIONS_REGISTRY[action_id]
+    receipt.status = "REJECTED"
+    receipt.rejection_reason = reason
+
+    # Update node in graph
+    store = get_graph_store()
+    node = store.get_node(receipt.target_entity_id)
+    if node:
+        node.properties["remediation_status"] = f"REJECTED: {reason}"
+
+    logger.info(f"Action {action_id} REJECTED. Reason: {reason}")
+    return {
+        "success": True,
+        "action_id": action_id,
+        "status": "REJECTED",
+        "rejection_reason": reason,
         "receipt": receipt.model_dump(),
     }
 

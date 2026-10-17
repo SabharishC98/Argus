@@ -88,6 +88,18 @@ export interface InvestigationDetail {
   risk_score?: number;
   risk_level?: string;
   decision?: string;
+  uncertainty_state?: string;
+  recommended_next_step?: string;
+  severity_escalation?: {
+    initial: string;
+    escalated: string;
+    original_severity?: string;
+    escalated_severity?: string;
+    discovered_capability: string;
+    affected_target: string;
+    path: string[];
+    reason: string;
+  };
   actions_taken: Array<{
     action_id: string;
     action_type: string;
@@ -98,6 +110,7 @@ export interface InvestigationDetail {
     simulation: boolean;
     receipt?: Record<string, unknown>;
   }>;
+  pending_actions?: ActionReceipt[];
   timeline: TimelineEvent[];
   explanation?: {
     investigation_id: string;
@@ -108,6 +121,8 @@ export interface InvestigationDetail {
     path_summary?: string;
     evidence_chain: string[];
     actions_executed: Array<Record<string, unknown>>;
+    severity_escalation?: Record<string, unknown>;
+    uncertainty_state?: string;
     executive_summary: string;
   };
   created_at: string;
@@ -152,6 +167,16 @@ export interface Finding {
   notes: string[];
 }
 
+export interface BlastRadiusPreview {
+  target: string;
+  action_type: string;
+  blast_count: number;
+  upstream_dependencies_impacted: string[];
+  downstream_dependents_impacted: string[];
+  isolated_assets_protected: string[];
+  critical_nodes_shielded: string[];
+}
+
 export interface ActionReceipt {
   action_id: string;
   action_type: string;
@@ -160,8 +185,80 @@ export interface ActionReceipt {
   simulation_mode: boolean;
   summary: string;
   details: Record<string, unknown>;
+  blast_radius_preview?: BlastRadiusPreview;
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
   timestamp: string;
   verification_hash: string;
+}
+
+export interface IngestionStatus {
+  active_source: 'seed_dataset' | 'real_repository';
+  repo_url?: string | null;
+  repo_name: string;
+  analyzed_at: string;
+  stats: {
+    nodes: number;
+    edges: number;
+    files: number;
+    dependencies: number;
+    vulnerabilities: number;
+  };
+}
+
+export interface IngestionResult {
+  success: boolean;
+  source_type: string;
+  repository_url: string;
+  repo_name: string;
+  nodes_count: number;
+  edges_count: number;
+  files_parsed: number;
+  dependencies_found: number;
+  vulnerabilities_enriched: number;
+  sample_entities: string[];
+  message: string;
+}
+
+export interface ScenarioResult {
+  scenario_id: string;
+  title: string;
+  has_ground_truth_path: boolean;
+  ground_truth_hops: number;
+  ground_truth_path: string[];
+  baseline_path_found: boolean;
+  baseline_predicted_path: string[];
+  baseline_correct: boolean;
+  baseline_exact_match: boolean;
+  baseline_edge_recall: number;
+  graph_path_found: boolean;
+  graph_predicted_path: string[];
+  graph_correct: boolean;
+  graph_exact_match: boolean;
+  graph_edge_recall: number;
+  graph_hops: number;
+}
+
+export interface BenchmarkReport {
+  evaluated_at: string;
+  total_scenarios: number;
+  connected_scenarios: number;
+  ambiguous_scenarios: number;
+  baseline_path_accuracy: number;
+  baseline_exact_path_accuracy: number;
+  baseline_avg_edge_recall: number;
+  baseline_false_positives: number;
+  baseline_false_negatives: number;
+  graph_path_accuracy: number;
+  graph_exact_path_accuracy: number;
+  graph_avg_edge_recall: number;
+  graph_false_positives: number;
+  graph_false_negatives: number;
+  accuracy_improvement_pp: number;
+  exact_match_improvement_pp: number;
+  edge_recall_improvement_pp: number;
+  scenarios: ScenarioResult[];
 }
 
 // Original ShadowLens types
@@ -314,6 +411,39 @@ export const api = {
     req<Record<string, unknown>>('/api/findings', { method: 'POST', body: JSON.stringify(body) }),
 
   listActions: () => req<ActionReceipt[]>('/api/actions'),
+
+  approveAction: (actionId: string, approver = 'security_lead') =>
+    req<{ success: boolean; action_id: string; status: string; approved_by: string; receipt: ActionReceipt }>(
+      `/api/actions/${actionId}/approve`,
+      { method: 'POST', body: JSON.stringify({ approver }) }
+    ),
+
+  rejectAction: (actionId: string, reason = 'Rejected by security operator') =>
+    req<{ success: boolean; action_id: string; status: string; rejection_reason: string; receipt: ActionReceipt }>(
+      `/api/actions/${actionId}/reject`,
+      { method: 'POST', body: JSON.stringify({ reason }) }
+    ),
+
+  // Repository Ingestion & Vulnerability Enrichment
+  getIngestionStatus: () => req<IngestionStatus>('/api/ingestion/status'),
+
+  ingestRepository: (repoUrl: string, maxFiles = 60) =>
+    req<IngestionResult>('/api/ingestion/repository', {
+      method: 'POST',
+      body: JSON.stringify({ repo_url: repoUrl, max_files: maxFiles }),
+    }),
+
+  resetSeedDataset: () =>
+    req<{ success: boolean; data_source: string; message: string }>('/api/ingestion/reset-seed', {
+      method: 'POST',
+    }),
+
+  // Benchmark Evaluation (Baseline vs Graph Agent)
+  runEvaluation: () => req<BenchmarkReport>('/api/evaluation/run', { method: 'POST' }),
+
+  getEvaluationResults: () => req<BenchmarkReport>('/api/evaluation/results'),
+
+  listEvaluationScenarios: () => req<any[]>('/api/evaluation/scenarios'),
 
   // Original ShadowLens Runs
   listRuns: (page = 1, limit = 50, technique?: string, model?: string) => {
