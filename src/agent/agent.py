@@ -1,5 +1,5 @@
 """
-ShadowLens Autonomous Investigation Agent.
+Argus Autonomous Investigation Agent.
 Main orchestration interface for starting, tracking, and retrieving investigations.
 """
 
@@ -21,9 +21,10 @@ logger = logging.getLogger(__name__)
 INVESTIGATIONS_STORE: Dict[str, InvestigationState] = {}
 
 
-class ShadowLensAgent:
+class ArgusAgent:
     def __init__(self, model: Optional[str] = None):
         self.planner = InvestigationPlanner(mcp_server=get_mcp_server(), model=model)
+
 
     async def start_investigation(
         self,
@@ -84,3 +85,8 @@ class ShadowLensAgent:
                 reverse=True,
             )
         ]
+
+
+# Backward compatibility alias
+ShadowLensAgent = ArgusAgent
+

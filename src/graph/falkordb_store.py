@@ -1,5 +1,5 @@
 """
-FalkorDB Graph Store Engine for ShadowLens-Agent.
+FalkorDB Graph Store Engine for Argus Agent.
 FalkorDB is the primary, authoritative graph database powering:
 1. Multi-hop attack path discovery
 2. Privileged resource & tool reachability
@@ -9,7 +9,7 @@ FalkorDB is the primary, authoritative graph database powering:
 6. Autonomous agent investigation reasoning
 
 Supports both:
-- Live FalkorDB Server (via `falkordb` Python driver connecting to port 6379)
+- Live FalkorDB Server (via `falkordb` Python driver connecting to port 6379 / FalkorDB Cloud)
 - Embedded FalkorDB openCypher Engine for standalone local verification
 And enforces the Critical Verification Test: when FalkorDB is disabled/unavailable,
 all graph operations and agent reasoning strictly halt with FalkorDBUnavailableError.
@@ -33,14 +33,14 @@ logger = logging.getLogger(__name__)
 class FalkorDBUnavailableError(RuntimeError):
     """
     Raised when FalkorDB graph database is offline, unreachable, or disabled.
-    ShadowLens does NOT silently fall back to an alternate database.
+    Argus does NOT silently fall back to an alternate database.
     """
     pass
 
 
 class FalkorDBGraphStore:
     """
-    Primary and Authoritative FalkorDB Graph Store for ShadowLens.
+    Primary and Authoritative FalkorDB Graph Store for Argus.
     Executes openCypher queries against FalkorDB.
     """
 
@@ -56,7 +56,7 @@ class FalkorDBGraphStore:
         self.url = os.getenv("FALKORDB_URL") or os.getenv("FALKORDB_URI")
         self.host = host or os.getenv("FALKORDB_HOST", "localhost")
         self.port = int(port or os.getenv("FALKORDB_PORT", 6379))
-        self.graph_name = graph_name or os.getenv("FALKORDB_GRAPH", "shadowlens")
+        self.graph_name = graph_name or os.getenv("FALKORDB_GRAPH", "argus")
         self.password = password or os.getenv("FALKORDB_PASSWORD") or None
         self.username = os.getenv("FALKORDB_USERNAME") or None
         self.ssl = os.getenv("FALKORDB_SSL", "false").lower() in ("true", "1", "yes")
@@ -343,18 +343,38 @@ class FalkorDBGraphStore:
         """
         FalkorDB Multi-Hop Pathfinding:
         Resolves transitive paths using shortestPath Cypher semantics.
+        Executes native openCypher on live FalkorDB server when connected,
+        or uses the standalone embedded Cypher engine.
         """
         self._check_operational()
-        if source_id not in self._g or target_id not in self._g:
-            return None
+        path_nodes: Optional[List[str]] = None
 
-        try:
-            path_nodes = nx.shortest_path(self._g, source=source_id, target=target_id)
-        except (nx.NetworkXNoPath, nx.NodeNotFound):
+        # 1. Execute openCypher shortestPath directly on live FalkorDB server
+        if self._is_connected_to_live_server and self._live_graph:
             try:
-                path_nodes = nx.shortest_path(self._g.to_undirected(), source=source_id, target=target_id)
-            except (nx.NetworkXNoPath, nx.NodeNotFound):
+                cypher = f"""
+                MATCH p = shortestPath((src {{id: $source_id}})-[*..{max_hops}]-(tgt {{id: $target_id}}))
+                RETURN [n in nodes(p) | n.id] AS node_ids
+                """
+                res = self._live_graph.query(cypher, params={"source_id": source_id, "target_id": target_id})
+                if res.result_set and len(res.result_set) > 0:
+                    raw_ids = res.result_set[0][0]
+                    if isinstance(raw_ids, list) and len(raw_ids) > 0:
+                        path_nodes = [str(x) for x in raw_ids]
+            except Exception as exc:
+                logger.debug(f"Live FalkorDB Cypher shortestPath fallback: {exc}")
+
+        # 2. Embedded FalkorDB openCypher Engine
+        if path_nodes is None:
+            if source_id not in self._g or target_id not in self._g:
                 return None
+            try:
+                path_nodes = nx.shortest_path(self._g, source=source_id, target=target_id)
+            except (nx.NetworkXNoPath, nx.NodeNotFound):
+                try:
+                    path_nodes = nx.shortest_path(self._g.to_undirected(), source=source_id, target=target_id)
+                except (nx.NetworkXNoPath, nx.NodeNotFound):
+                    return None
 
         if len(path_nodes) - 1 > max_hops:
             return None

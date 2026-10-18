@@ -175,3 +175,17 @@ async def test_critical_verification_remove_falkordb():
     recovered_path = store.find_shortest_path("endpoint:payment-v1", "db:prod-payments-db", max_hops=6)
     assert recovered_path is not None
     assert recovered_path.hop_count >= 3
+
+
+def test_falkordb_network_outage_unreachable_socket():
+    """
+    Physical Network Outage Test:
+    Instantiates FalkorDB store targeting an unreachable TCP socket (port 6399).
+    Verifies that socket connection fails cleanly, live server is marked offline,
+    and no spurious connection is fabricated.
+    """
+    dead_store = FalkorDBGraphStore(host="127.0.0.1", port=6399)
+    assert dead_store._is_connected_to_live_server is False
+    assert dead_store._live_client is None
+    assert dead_store.backend_name == "FalkorDB"
+

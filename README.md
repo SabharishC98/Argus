@@ -15,9 +15,9 @@
 | Requirement | Implementation & Links |
 | :--- | :--- |
 | **1. Public Source-Code Repository** | [github.com/SabharishC98/Argus](https://github.com/SabharishC98/Argus) |
-| **2. Setup Instructions** | [Section 7 (Docker / Cloud)](file:///d:/shadowlens2.0/ShadowLens-Agent/README.md#7-starting-falkordb-locally) & [Section 12 (Quickstart)](file:///d:/shadowlens2.0/ShadowLens-Agent/README.md#12-quickstart-guide-local) |
-| **3. Graph Data Model** | [Section 3: FalkorDB Graph Schema (Node & Edge Topology)](file:///d:/shadowlens2.0/ShadowLens-Agent/README.md#3-falkordb-graph-schema) |
-| **4. Cypher Queries & Graph Algorithms** | [Section 4: Key FalkorDB Cypher Queries & Traversal Algorithms](file:///d:/shadowlens2.0/ShadowLens-Agent/README.md#4-key-falkordb-cypher-queries) |
+| **2. Setup Instructions** | [Section 7 (Docker / Cloud)](#7-starting-falkordb-locally) & [Section 12 (Quickstart)](#12-quickstart-guide-local) |
+| **3. Graph Data Model** | [Section 3: FalkorDB Graph Schema (Node & Edge Topology)](#3-falkordb-graph-schema) |
+| **4. Cypher Queries & Graph Algorithms** | [Section 4: Key FalkorDB Cypher Queries & Traversal Algorithms](#4-key-falkordb-cypher-queries) |
 
 ---
 
@@ -31,7 +31,7 @@ An autonomous agent is equipped with the **Model Context Protocol (MCP)** to tra
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        SHADOWLENS AGENT LOOP                           │
+│                          ARGUS AGENT LOOP                              │
 │                                                                        │
 │   Real Repository / Security Data                                      │
 │               │                                                        │
@@ -43,7 +43,7 @@ An autonomous agent is equipped with the **Model Context Protocol (MCP)** to tra
 │               │                                                        │
 │               ▼ MCP Graph Tools (Cypher queries)                       │
 │   ┌───────────────────────┐         MCP Tool Calling                   │
-│   │   ShadowLens Agent    │ ────────────────────────────────┐          │
+│   │      Argus Agent      │ ────────────────────────────────┐          │
 │   │   (Planner & Reasoner)│ ◄───────────────────────────────┤          │
 │   └───────────────────────┘                                 ▼          │
 │               │                                   ┌──────────────────┐ │
@@ -76,7 +76,7 @@ An autonomous agent is equipped with the **Model Context Protocol (MCP)** to tra
 
 ## 2. Why FalkorDB Is Required
 
-**FalkorDB is the primary and authoritative graph database for ShadowLens.**
+**FalkorDB is the primary and authoritative graph database for Argus.**
 
 Every core capability depends directly on FalkorDB:
 
@@ -120,7 +120,7 @@ The application **does NOT silently fall back** to another database or hardcoded
 | `TOOL` | Agent tool | `tool:cloud_admin_exec` | privilege_level, capabilities |
 | `SERVICE` | Microservice | `service:transaction-service` | owner, sla, dependencies |
 | `FILE` | Source file | `file:jwt_handler.py` | loc, language, last_modified |
-| `REPOSITORY` | Code repository | `repo:shadowlens-core` | visibility, branch, stars |
+| `REPOSITORY` | Code repository | `repo:argus-core` | visibility, branch, stars |
 
 ### Relationship Types
 
@@ -293,7 +293,7 @@ Set `FALKORDB_HOST` and `FALKORDB_PORT` in your `.env` file to connect to Falkor
 ```env
 FALKORDB_HOST=localhost
 FALKORDB_PORT=6379
-FALKORDB_GRAPH_NAME=shadowlens
+FALKORDB_GRAPH_NAME=argus
 ```
 
 ### Verify FalkorDB is running
@@ -333,13 +333,13 @@ Expected response:
 | Agent investigation | ✅ `CONFIRMED_CRITICAL_RISK` | ❌ `FAILED_GRAPH_UNAVAILABLE` — halts immediately |
 | Silent fallback | N/A | ❌ **None** — fails explicitly and loudly |
 
-**Conclusion**: Removing FalkorDB causes every core graph-reasoning capability to fail with an explicit error. The system does NOT silently degrade to a working state using another backend.
+**Conclusion**: Disabling or disconnecting FalkorDB causes every core graph-reasoning capability to fail with an explicit error. The system does not silently degrade or fabricate paths using another backend.
 
-**Run the verification yourself:**
+**Run the verification suite:**
 ```bash
 python -m pytest tests/test_falkordb_verification.py -v
 ```
-Expected: `3 passed`
+Expected: `4 passed` (validates primary store status, 8 graph operations, software outage simulation, and physical TCP socket disconnection).
 
 ---
 
@@ -351,16 +351,14 @@ Expected: `3 passed`
 - **Dependency & CVE Enrichment**: Parses `requirements.txt`, queries **OSV.dev** for live advisories, stores vulnerabilities in FalkorDB.
 - **Dual-Source Toggle**: Switch between live real repository graphs and the verified offline seed dataset.
 
-### 2. Measured Results & Benchmark Evaluation Framework
-- **18 verified ground-truth scenarios** (15 multi-hop attack paths + 3 ambiguous/disconnected cases).
-- **Fair Comparison** — identical inputs, two conditions:
-  - **No-Graph Baseline**: Raw textual findings without graph traversal.
-  - **Graph Agent**: Autonomous agent with FalkorDB-powered MCP graph tools.
-- **Zero Fabrication** — all metrics computed by `BenchmarkEvaluator`:
-  - **Path-Finding Accuracy**: Graph Agent **100%** vs Baseline **33.3%** (+66.7 pp)
-  - **Exact Path Accuracy**: Graph Agent **100%** vs Baseline **22.2%** (+77.8 pp)
-  - **Edge Recall**: Graph Agent **100%** vs Baseline **26.4%** (+73.6 pp)
-  - **False Positives**: Baseline **2 FP** vs Graph Agent **0 FP**
+### 2. Empirical Benchmark Evaluation Framework
+- **22 Standardized Evaluation Scenarios**: 18 core topologies spanning injection chains, blast radii, privilege escalations, and ambiguous cases, plus 4 held-out scenarios from real repositories (`pallets/flask` and `WebGoat/WebGoat`).
+- **Baseline Definition**: Identical LLM pipeline supplied with flat textual alert notifications, security findings, and package manifests, without access to graph tools or topological traversals.
+- **Measured Metrics** (computed by `BenchmarkEvaluator`):
+  - **Path-Finding Accuracy**: Graph Agent **90.9%** vs. Flat LLM Baseline **0.0%** (text-only LLMs fail to recover transitive links across >2 hops without hallucinating)
+  - **Exact Path Match**: Graph Agent **77.3%** vs. Flat LLM Baseline **0.0%**
+  - **Average Edge Recall**: Graph Agent **82.2%** vs. Flat LLM Baseline **0.0%**
+  - **Ambiguity & Disconnected Case False Positives**: Baseline **4 False Positives** (hallucinating active compromise from isolated anomalies) vs. Graph Agent **0 False Positives** (correctly verifying disconnected topology and halting with `INSUFFICIENT_EVIDENCE`)
 
 ### 3. Non-Obvious Graph Insight — Severity Escalation (Scenario 4)
 - **The Finding**: `finding:sec-402-format-injection` — initially rated `MEDIUM`.
@@ -384,7 +382,7 @@ Expected: `3 passed`
 ### Scenario 1: API Endpoint to SQL Injection (5-Hop Attack Path)
 - **Target**: `endpoint:payment-v1`
 - **FalkorDB Path**:
-  `input:user-query` → `endpoint:payment-v1` → `controller:payment-controller` → `service:transaction-service` → `repo:payment-repo` → `query:raw-sql-executor` → `db:prod-payments-db`
+  `endpoint:payment-v1` → `controller:payment-controller` → `service:transaction-service` → `repo:payment-repo` → `query:raw-sql-executor` → `db:prod-payments-db` (5 hops across 6 entities)
 - **Result**: `CRITICAL RISK` (Score: 0.95)
 
 ### Scenario 2: Compromised Dependency Blast Radius
@@ -397,7 +395,7 @@ Expected: `3 passed`
 - **FalkorDB Path**: `finding:sec-309` → `func:execute_tool_action` → `agent:tool-caller` → `cloud:iam-role-worker` → `cloud:s3-prod-customer-backups`
 - **Result**: `CRITICAL RISK`
 
-### Scenario 4: ⚡ Non-Obvious Insight (MEDIUM → CRITICAL)
+### Scenario 4: Non-Obvious Insight (Severity Escalation)
 - **Target**: `finding:sec-402-format-injection`
 - **FalkorDB Path**: Minor template bug → `tool:cloud_admin_exec` → `cloud:kms_master_key`
 - **Result**: Autonomously escalated from `MEDIUM` to `CRITICAL`.
@@ -412,7 +410,7 @@ Expected: `3 passed`
 ## 11. Architecture & Directory Structure
 
 ```
-ShadowLens-Agent/
+Argus/
 ├── docker-compose.yml           # FalkorDB + Backend + Frontend
 ├── Dockerfile.backend           # Python 3.11 FastAPI backend
 ├── requirements.txt             # falkordb>=1.8.0, redis>=5.0.0, FastAPI, NetworkX, LiteLLM
@@ -430,7 +428,7 @@ ShadowLens-Agent/
 │   │   └── vuln_enricher.py     # OSV.dev live query → FalkorDB
 │   │
 │   ├── evaluation/              # Benchmark Evaluation Engine
-│   │   ├── dataset.py           # 18 ground-truth scenarios
+│   │   ├── dataset.py           # 22 ground-truth scenarios (including held-out repos)
 │   │   └── evaluator.py         # Baseline vs Graph Agent benchmark runner
 │   │
 │   ├── mcp/                     # Model Context Protocol (MCP) Server
@@ -441,7 +439,7 @@ ShadowLens-Agent/
 │   │   ├── state.py             # InvestigationState schema
 │   │   ├── planner.py           # Multi-hop reasoning loop (FalkorDB connectivity check)
 │   │   ├── explainer.py         # Structured explainability generator
-│   │   └── agent.py             # ShadowLensAgent orchestrator
+│   │   └── agent.py             # ArgusAgent orchestrator
 │   │
 │   └── api/                     # REST API & WebSockets
 │       ├── main.py              # Application entry point (FalkorDB metadata)
