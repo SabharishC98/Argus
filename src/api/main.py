@@ -1,9 +1,9 @@
 """
-FastAPI application entry point for ShadowLens-Agent.
+FastAPI application entry point for Argus Agent.
 Autonomous graph-powered investigation agent that acts on connected data.
 
 Initialises on startup:
-  - Connected Knowledge Graph (Neo4j or InMemory NetworkX)
+  - Connected Knowledge Graph (FalkorDB — openCypher embedded engine)
   - Pre-seeded security graph topologies & scenarios
   - Model Context Protocol (MCP) tool registry
   - MongoDB connection (optional)
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("Initializing ShadowLens Autonomous Connected Agent...")
+    logger.info("Initializing Argus Autonomous Connected Agent...")
 
     # 1. Initialize Graph Store & Seed Data
     from src.graph.graph_store import get_graph_store
@@ -68,14 +68,14 @@ async def lifespan(app: FastAPI):
     # Shutdown
     from src.api.db import disconnect_db
     await disconnect_db()
-    logger.info("ShadowLens-Agent API shut down.")
+    logger.info("Argus Agent API shut down.")
 
 
 # ── App ────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title       = "ShadowLens-Agent API",
-    description = "Autonomous Graph-Powered Security Investigation Agent Acting on Connected Data",
+    title       = "Argus Agent API",
+    description = "Autonomous Graph-Powered Security Investigation Agent Acting on Connected Data (FalkorDB + MCP)",
     version     = "2.0.0",
     lifespan    = lifespan,
 )
@@ -109,7 +109,7 @@ async def global_exception_handler(request, exc):
 
 # ── Routers ────────────────────────────────────────────────────────────────────
 
-# Autonomous Graph Agent Routers (NEW)
+# Autonomous Graph Agent Routers
 from src.api.routes.investigations import router as investigations_router
 from src.api.routes.graph_routes import router as graph_router
 from src.api.routes.mcp_routes import router as mcp_router
@@ -125,7 +125,7 @@ app.include_router(router_actions)
 app.include_router(ingestion_router)
 app.include_router(evaluation_router)
 
-# Original ShadowLens Routers (Retained for backward compatibility)
+# Legacy Routers (retained for backward compatibility)
 from src.api.routes.runs import router as runs_router
 from src.api.routes.experiments import router as experiments_router
 from src.api.routes.models import router_models, router_pipelines
@@ -167,7 +167,7 @@ async def websocket_experiment_stream(websocket: WebSocket, experiment_id: str):
 @app.get("/")
 async def root():
     return {
-        "name": "ShadowLens-Agent",
+        "name": "Argus Agent",
         "version": "2.0.0",
         "theme": "Agents That Act on Connected Data",
         "primary_graph_database": "FalkorDB",

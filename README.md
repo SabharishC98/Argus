@@ -25,10 +25,10 @@
 
 | Component | URL | Notes |
 | :--- | :--- | :--- |
-| **Frontend (Vercel)** | [argus-frontend.vercel.app](https://argus-frontend.vercel.app) | Auto-deploys from `main` |
+| **Frontend (Vercel)** | [argus-rose-delta.vercel.app](https://argus-rose-delta.vercel.app/) | Auto-deploys from `main` |
 | **Backend API (Render)** | [argus-backend-un0a.onrender.com](https://argus-backend-un0a.onrender.com) | Free tier — first request takes ~30s to wake |
 | **API Docs (Swagger)** | [argus-backend-un0a.onrender.com/docs](https://argus-backend-un0a.onrender.com/docs) | FastAPI interactive docs |
-| **Health Check** | [/api/health](https://argus-backend-un0a.onrender.com/api/health) | Returns `falkordb_connected`, `falkordb_mode`, node count |
+| **Health Check** | [argus-backend-un0a.onrender.com/api/health](https://argus-backend-un0a.onrender.com/api/health) | Returns `falkordb_connected`, `falkordb_mode`, node count |
 
 > **Note for judges**: The Vercel frontend is a static React SPA that calls the Render backend at runtime via `VITE_API_URL`. If the Render container is cold-sleeping, open `/api/health` first, wait ~30 seconds for a `200 OK`, then reload the frontend. The graph will populate automatically.
 >

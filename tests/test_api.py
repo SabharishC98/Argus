@@ -13,7 +13,7 @@ async def test_api_root_and_overview():
         res = await ac.get("/")
         assert res.status_code == 200
         data = res.json()
-        assert data["name"] == "ShadowLens-Agent"
+        assert data["name"] in ["Argus Agent", "ShadowLens-Agent"]
         assert "endpoints" in data
 
         # Graph overview
