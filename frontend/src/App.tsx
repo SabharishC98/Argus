@@ -5,7 +5,7 @@ import GraphExplorerView from './views/GraphExplorerView';
 import FindingsView from './views/FindingsView';
 import EvaluationView from './views/EvaluationView';
 import ArgusMythBackground from './components/ArgusMythBackground';
-import { api, type HealthStatus } from './services/api';
+import { api, type HealthStatus, type FalkorDBStatus } from './services/api';
 import './index.css';
 
 type View = 'investigation' | 'explorer' | 'findings' | 'evaluation';
@@ -20,9 +20,11 @@ const NAV_ITEMS = [
 export default function App() {
   const [view, setView] = useState<View>('investigation');
   const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [falkorStatus, setFalkorStatus] = useState<FalkorDBStatus | null>(null);
 
   const refreshHealth = useCallback(() => {
     api.health().then(setHealth).catch(() => setHealth(null));
+    api.getFalkorDBStatus().then(setFalkorStatus).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -111,8 +113,22 @@ export default function App() {
           </div>
           <div className="utility-meta" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: health ? '#315838' : '#8C323B', display: 'inline-block' }} />
-              {health?.falkordb_mode === 'live_server' ? 'FalkorDB Cloud: Connected' : 'FalkorDB Engine: Active'}
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%',
+                background: !health
+                  ? '#8C323B'
+                  : falkorStatus?.is_operational === false
+                    ? '#8C323B'
+                    : '#315838',
+                display: 'inline-block'
+              }} />
+              {!health
+                ? 'FalkorDB: Connecting...'
+                : falkorStatus?.is_operational === false
+                  ? 'FalkorDB: DISABLED (Test)'
+                  : health.falkordb_mode === 'live_server'
+                    ? 'FalkorDB Cloud: Connected'
+                    : 'FalkorDB Engine: Active'}
             </span>
             <span>Model Context Protocol (MCP)</span>
             <span className="utility-mark" aria-hidden="true" />
