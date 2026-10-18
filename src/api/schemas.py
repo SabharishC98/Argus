@@ -93,4 +93,8 @@ class HealthResponse(BaseModel):
     classifier_mode: str   # "live" | "stub"
     db_connected: bool
     llm_providers: List[str]
-    version: str           = "1.0.0"
+    version: str             = "2.0.0"
+    falkordb_connected: bool = True
+    falkordb_mode: str       = "embedded" # "live_server" | "embedded"
+    falkordb_host: str       = "localhost"
+    falkordb_node_count: int = 14

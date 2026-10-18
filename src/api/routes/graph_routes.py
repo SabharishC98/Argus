@@ -35,14 +35,19 @@ async def get_falkordb_status():
     store = get_graph_store()
     is_op = store.is_operational() if hasattr(store, "is_operational") else True
     is_live = getattr(store, "_is_connected_to_live_server", False)
+    node_count = len(getattr(store, "_nodes", {}))
+    edge_count = len(getattr(store, "_edges", []))
     return {
         "primary_database": "FalkorDB",
         "authoritative": True,
         "is_operational": is_op,
-        "connection_mode": "Live FalkorDB Server (port 6379)" if is_live else "FalkorDB Cypher Engine",
+        "connection_mode": "Live FalkorDB Server (port 6379)" if is_live else "FalkorDB Cypher Engine (Embedded)",
+        "is_live_server": is_live,
         "graph_name": getattr(store, "graph_name", "shadowlens"),
         "host": getattr(store, "host", "localhost"),
         "port": getattr(store, "port", 6379),
+        "node_count": node_count,
+        "edge_count": edge_count,
         "status": "OPERATIONAL" if is_op else "OFFLINE_DISABLED",
     }
 

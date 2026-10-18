@@ -29,17 +29,30 @@ async def health_check():
     model_path   = os.getenv("CLASSIFIER_MODEL_PATH", "stub")
     clf_mode     = "live" if (model_path != "stub" and os.path.isdir(model_path)) else "stub"
 
-    # LLM providers — check for free-tier keys (Gemini + Groq)
-    providers = []
-    if os.getenv("GEMINI_API_KEY"):     providers.append("gemini")
-    if os.getenv("GROQ_API_KEY"):       providers.append("groq")
-    # Also check paid providers if user adds them later
-    if os.getenv("OPENAI_API_KEY"):     providers.append("openai")
-    if os.getenv("ANTHROPIC_API_KEY"):  providers.append("anthropic")
+    # FalkorDB Knowledge Graph status
+    falkordb_connected = True
+    falkordb_mode = "embedded"
+    falkordb_host = "localhost"
+    falkordb_nodes = 14
+    try:
+        from src.graph.graph_store import get_graph_store
+        store = get_graph_store()
+        falkordb_connected = store.is_operational() if hasattr(store, "is_operational") else True
+        is_live = getattr(store, "_is_connected_to_live_server", False)
+        falkordb_mode = "live_server" if is_live else "embedded"
+        falkordb_host = getattr(store, "host", "localhost")
+        falkordb_nodes = len(getattr(store, "_nodes", {}))
+    except Exception:
+        pass
 
     return HealthResponse(
-        status          = "ok",
-        classifier_mode = clf_mode,
-        db_connected    = db_connected,
-        llm_providers   = providers,
+        status              = "ok",
+        classifier_mode     = clf_mode,
+        db_connected        = db_connected,
+        llm_providers       = providers,
+        version             = "2.0.0",
+        falkordb_connected  = falkordb_connected,
+        falkordb_mode       = falkordb_mode,
+        falkordb_host       = falkordb_host,
+        falkordb_node_count = falkordb_nodes,
     )

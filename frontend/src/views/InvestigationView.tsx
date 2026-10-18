@@ -83,8 +83,18 @@ export default function InvestigationView() {
   const fetchStatusAndGraph = () => {
     api.getIngestionStatus().then(setIngestionStatus).catch(console.error);
     api.getGraphOverview().then(g => {
-      setGraphNodes(g.nodes);
-      setGraphEdges(g.edges);
+      setGraphNodes(prev => {
+        if (prev.length > 0 && prev.length === g.nodes.length && prev[0]?.id === g.nodes[0]?.id) {
+          return prev;
+        }
+        return g.nodes;
+      });
+      setGraphEdges(prev => {
+        if (prev.length > 0 && prev.length === g.edges.length) {
+          return prev;
+        }
+        return g.edges;
+      });
     }).catch(err => console.error('Failed to load initial graph', err));
   };
 

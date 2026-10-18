@@ -13,6 +13,7 @@ const ALGORITHMS = [
 export default function GraphExplorerView() {
   const [overview, setOverview] = useState<GraphOverview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [falkorStatus, setFalkorStatus] = useState<import('../services/api').FalkorDBStatus | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -27,7 +28,12 @@ export default function GraphExplorerView() {
 
   useEffect(() => {
     fetchGraph();
+    fetchFalkorStatus();
   }, []);
+
+  const fetchFalkorStatus = () => {
+    api.getFalkorDBStatus().then(setFalkorStatus).catch(console.error);
+  };
 
   const fetchGraph = async () => {
     setLoading(true);
@@ -38,6 +44,17 @@ export default function GraphExplorerView() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleFalkorDB = async () => {
+    if (!falkorStatus) return;
+    try {
+      await api.toggleFalkorDB(!falkorStatus.is_operational);
+      fetchFalkorStatus();
+      fetchGraph();
+    } catch (err) {
+      console.error('Failed to toggle FalkorDB', err);
     }
   };
 
@@ -105,6 +122,36 @@ export default function GraphExplorerView() {
           <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
           Reload Graph
         </button>
+      </div>
+
+      {/* FalkorDB Connection & Verification Beacon */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Database size={16} color="var(--accent-burgundy)" />
+          <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            FalkorDB Authoritative Graph:
+          </span>
+          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', padding: '3px 8px', borderRadius: 4, background: falkorStatus?.is_live_server ? 'rgba(49, 88, 56, 0.12)' : 'rgba(103, 36, 43, 0.08)', color: falkorStatus?.is_live_server ? '#315838' : '#67242B', fontWeight: 600 }}>
+            {falkorStatus?.connection_mode || 'FalkorDB Cypher Engine (Embedded)'}
+          </span>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: falkorStatus?.is_operational ? '#315838' : '#8C323B', display: 'inline-block' }} />
+            {falkorStatus?.is_operational ? 'OPERATIONAL' : 'DISABLED (VERIFICATION TEST)'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            CRITICAL VERIFICATION:
+          </span>
+          <button
+            onClick={handleToggleFalkorDB}
+            className="btn btn-secondary"
+            style={{ fontSize: '10px', padding: '4px 10px', height: 'auto', color: falkorStatus?.is_operational ? '#8C323B' : '#315838' }}
+            title="Temporarily disable or enable FalkorDB to verify the agent strictly halts without graph data"
+          >
+            {falkorStatus?.is_operational ? 'Disable FalkorDB (Test Failure)' : 'Restore FalkorDB'}
+          </button>
+        </div>
       </div>
 
       {/* Metrics Row */}

@@ -352,6 +352,24 @@ export interface HealthStatus {
   db_connected: boolean;
   llm_providers: string[];
   version: string;
+  falkordb_connected?: boolean;
+  falkordb_mode?: 'live_server' | 'embedded';
+  falkordb_host?: string;
+  falkordb_node_count?: number;
+}
+
+export interface FalkorDBStatus {
+  primary_database: string;
+  authoritative: boolean;
+  is_operational: boolean;
+  connection_mode: string;
+  is_live_server: boolean;
+  graph_name: string;
+  host: string;
+  port: number;
+  node_count: number;
+  edge_count: number;
+  status: string;
 }
 
 // ── API Methods ───────────────────────────────────────────────────────────────
@@ -376,7 +394,15 @@ export const api = {
   getInvestigationGraph: (id: string) =>
     req<InvestigationGraph>(`/api/investigations/${id}/graph`),
 
-  // Connected Knowledge Graph
+  // Connected Knowledge Graph & FalkorDB
+  getFalkorDBStatus: () => req<FalkorDBStatus>('/api/graph/status'),
+
+  toggleFalkorDB: (operational: boolean) =>
+    req<{ primary_database: string; is_operational: boolean; status: string; message: string }>(
+      '/api/graph/falkordb-toggle',
+      { method: 'POST', body: JSON.stringify({ operational }) }
+    ),
+
   getGraphOverview: () => req<GraphOverview>('/api/graph/overview'),
 
   getGraphSubgraph: (entity_id: string, depth = 2) =>

@@ -53,10 +53,13 @@ class FalkorDBGraphStore:
         graph_name: Optional[str] = None,
         password: Optional[str] = None,
     ):
+        self.url = os.getenv("FALKORDB_URL") or os.getenv("FALKORDB_URI")
         self.host = host or os.getenv("FALKORDB_HOST", "localhost")
         self.port = int(port or os.getenv("FALKORDB_PORT", 6379))
         self.graph_name = graph_name or os.getenv("FALKORDB_GRAPH", "shadowlens")
         self.password = password or os.getenv("FALKORDB_PASSWORD") or None
+        self.username = os.getenv("FALKORDB_USERNAME") or None
+        self.ssl = os.getenv("FALKORDB_SSL", "false").lower() in ("true", "1", "yes")
 
         self._is_operational = os.getenv("FALKORDB_ENABLED", "true").lower() in ("true", "1", "yes")
         self._live_client = None
@@ -78,12 +81,18 @@ class FalkorDBGraphStore:
 
         try:
             import falkordb
-            client = falkordb.FalkorDB(
-                host=self.host,
-                port=self.port,
-                password=self.password,
-                socket_connect_timeout=1.0,
-            )
+            if self.url:
+                client = falkordb.FalkorDB.from_url(self.url)
+            else:
+                use_ssl = self.ssl or (self.port == 6380) or ("falkordb.cloud" in self.host.lower())
+                client = falkordb.FalkorDB(
+                    host=self.host,
+                    port=self.port,
+                    password=self.password,
+                    username=self.username,
+                    ssl=use_ssl,
+                    socket_connect_timeout=5.0,
+                )
             # Verify connectivity
             client.connection.ping()
             self._live_client = client

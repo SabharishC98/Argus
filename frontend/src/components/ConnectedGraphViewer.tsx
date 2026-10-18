@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
 import type { GraphNode, GraphEdge, DiscoveredPath } from '../services/api';
 
@@ -16,7 +16,7 @@ const RISK_COLORS: Record<string, string> = {
   HIGH:     '#8C323B', // Wine red
   MEDIUM:   '#A83E49', // Crimson oxblood
   LOW:      '#968E8F', // Silver soft
-  SAFE:     '#F2F2F2', // Porcelain
+  SAFE:     '#315838', // Forest muted green
 };
 
 const TYPE_ICONS: Record<string, string> = {
@@ -62,6 +62,12 @@ export default function ConnectedGraphViewer({
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  
+  // Persist node positions across re-renders to prevent sudden reforming/explosions
+  const nodePosRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const simulationRef = useRef<d3.Simulation<D3Node, D3Link> | null>(null);
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const zoomGroupRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
 
   // Compute set of path node IDs and path edges for rapid lookup
   const pathNodeIds = useMemo(() => {
@@ -81,6 +87,14 @@ export default function ConnectedGraphViewer({
     return keys;
   }, [highlightedPath]);
 
+  // Topology fingerprint: only re-build the D3 force simulation when actual nodes/edges change
+  const topologyFingerprint = useMemo(() => {
+    const nKey = nodes.map(n => n.id).sort().join(',');
+    const eKey = edges.map(e => `${e.source}->${e.target}`).sort().join(',');
+    return `${nKey}|${eKey}`;
+  }, [nodes, edges]);
+
+  // Main D3 force layout creation & physics configuration
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return;
 
@@ -104,7 +118,7 @@ export default function ConnectedGraphViewer({
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#4b5563');
+      .attr('fill', 'rgba(103, 36, 43, 0.4)');
 
     // Arrowhead marker path highlight
     defs.append('marker')
@@ -121,7 +135,7 @@ export default function ConnectedGraphViewer({
 
     // Glow filter
     const glowFilter = defs.append('filter').attr('id', 'path-glow');
-    glowFilter.append('feGaussianBlur').attr('stdDeviation', 4).attr('result', 'coloredBlur');
+    glowFilter.append('feGaussianBlur').attr('stdDeviation', 3.5).attr('result', 'coloredBlur');
     const feMerge = glowFilter.append('feMerge');
     feMerge.append('feMergeNode').attr('in', 'coloredBlur');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
@@ -136,7 +150,7 @@ export default function ConnectedGraphViewer({
       .attr('cx', 2)
       .attr('cy', 2)
       .attr('r', 1.2)
-      .attr('fill', 'rgba(103, 36, 43, 0.09)');
+      .attr('fill', 'rgba(103, 36, 43, 0.08)');
 
     svg.append('rect')
       .attr('width', width)
@@ -145,6 +159,7 @@ export default function ConnectedGraphViewer({
 
     // Zoom container
     const g = svg.append('g').attr('class', 'zoom-group');
+    zoomGroupRef.current = g;
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
@@ -154,12 +169,31 @@ export default function ConnectedGraphViewer({
       });
 
     svg.call(zoom);
+    zoomBehaviorRef.current = zoom;
 
-    // Prepare simulation data
-    const d3Nodes: D3Node[] = nodes.map(n => ({
-      ...n,
-      isPathNode: pathNodeIds.has(n.id),
-    }));
+    // Check if we have cached positions for existing nodes
+    let hasExistingPositions = false;
+    const d3Nodes: D3Node[] = nodes.map((n, i) => {
+      const cached = nodePosRef.current.get(n.id);
+      if (cached) {
+        hasExistingPositions = true;
+        return {
+          ...n,
+          x: cached.x,
+          y: cached.y,
+          isPathNode: pathNodeIds.has(n.id),
+        };
+      }
+      // Spread new nodes gently around center
+      const angle = (i / Math.max(1, nodes.length)) * 2 * Math.PI;
+      const radius = 120 + (i % 3) * 45;
+      return {
+        ...n,
+        x: width / 2 + Math.cos(angle) * radius,
+        y: h / 2 + Math.sin(angle) * radius,
+        isPathNode: pathNodeIds.has(n.id),
+      };
+    });
 
     const d3Links: D3Link[] = edges.map(e => ({
       source: e.source,
@@ -169,12 +203,21 @@ export default function ConnectedGraphViewer({
       isPathLink: pathEdgeKeys.has(`${e.source}->${e.target}`) || pathEdgeKeys.has(`${e.target}->${e.source}`),
     }));
 
-    // Create D3 Force Simulation
+    // Create D3 Force Simulation with HIGH friction & rapid decay to prevent jitter/shaking
     const simulation = d3.forceSimulation<D3Node>(d3Nodes)
-      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(110))
-      .force('charge', d3.forceManyBody().strength(-380))
-      .force('center', d3.forceCenter(width / 2, h / 2))
-      .force('collision', d3.forceCollide().radius(44));
+      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(110).strength(0.7))
+      .force('charge', d3.forceManyBody().strength(-200).distanceMax(340))
+      .force('center', d3.forceCenter(width / 2, h / 2).strength(0.08))
+      .force('collision', d3.forceCollide().radius(36).strength(0.7))
+      .velocityDecay(0.65)   // High friction: quickly settles without elastic oscillation
+      .alphaDecay(0.05);     // Rapid cooling: graph reaches stable resting state in ~40 ticks (~1s)
+
+    // If positions were already known, reheat very gently so it barely shifts
+    if (hasExistingPositions) {
+      simulation.alpha(0.18).restart();
+    }
+
+    simulationRef.current = simulation;
 
     // Render edges
     const linkGroup = g.append('g').attr('class', 'links');
@@ -194,6 +237,7 @@ export default function ConnectedGraphViewer({
 
     // Main edge line
     const edgeLines = link.append('line')
+      .attr('class', 'edge-line')
       .attr('stroke', d => d.isPathLink ? '#67242B' : 'rgba(103, 36, 43, 0.22)')
       .attr('stroke-width', d => d.isPathLink ? 2.5 : 1.2)
       .attr('stroke-dasharray', d => d.isPathLink ? '6,3' : 'none')
@@ -213,15 +257,16 @@ export default function ConnectedGraphViewer({
     // Render nodes
     const nodeGroup = g.append('g').attr('class', 'nodes');
     const node = nodeGroup.selectAll('g')
-      .data(d3Nodes)
+      .data(d3Nodes, (d: any) => d.id)
       .enter()
       .append('g')
       .attr('class', 'node-item')
+      .attr('id', d => `node-el-${d.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`)
       .style('cursor', 'pointer')
       .call(
         d3.drag<SVGGElement, D3Node>()
           .on('start', (event, d) => {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
+            if (!event.active) simulation.alphaTarget(0.2).restart();
             d.fx = d.x;
             d.fy = d.y;
           })
@@ -231,6 +276,10 @@ export default function ConnectedGraphViewer({
           })
           .on('end', (event, d) => {
             if (!event.active) simulation.alphaTarget(0);
+            // Pin dragged position in cache
+            if (d.x !== undefined && d.y !== undefined) {
+              nodePosRef.current.set(d.id, { x: d.x, y: d.y });
+            }
             d.fx = null;
             d.fy = null;
           })
@@ -242,6 +291,7 @@ export default function ConnectedGraphViewer({
     // Node outer ring / halo for path nodes
     node.filter(d => !!d.isPathNode)
       .append('circle')
+      .attr('class', 'path-halo')
       .attr('r', 25)
       .attr('fill', 'none')
       .attr('stroke', '#A83E49')
@@ -249,13 +299,13 @@ export default function ConnectedGraphViewer({
       .attr('stroke-dasharray', '4,2')
       .attr('opacity', 0.9);
 
-    // Node selected ring
-    node.filter(d => d.id === selectedNodeId)
-      .append('circle')
+    // Dedicated Selection ring (controlled smoothly by separate useEffect)
+    node.append('circle')
+      .attr('class', 'selection-ring')
       .attr('r', 28)
       .attr('fill', 'none')
-      .attr('stroke', '#67242B')
-      .attr('stroke-width', 2);
+      .attr('stroke', d => d.id === selectedNodeId ? '#67242B' : 'transparent')
+      .attr('stroke-width', 2.5);
 
     // Node base circle
     node.append('circle')
@@ -294,6 +344,13 @@ export default function ConnectedGraphViewer({
 
     // Simulation tick update
     simulation.on('tick', () => {
+      // Continuously update node positions in cache
+      d3Nodes.forEach(d => {
+        if (d.x !== undefined && d.y !== undefined) {
+          nodePosRef.current.set(d.id, { x: d.x, y: d.y });
+        }
+      });
+
       edgeLines
         .attr('x1', d => (d.source as D3Node).x || 0)
         .attr('y1', d => (d.source as D3Node).y || 0)
@@ -307,10 +364,88 @@ export default function ConnectedGraphViewer({
       node.attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
     });
 
+    // Stop simulation when settled completely to avoid CPU burn or micro-shakes
+    simulation.on('end', () => {
+      simulation.stop();
+    });
+
     return () => {
       simulation.stop();
     };
-  }, [nodes, edges, highlightedPath, pathNodeIds, pathEdgeKeys, selectedNodeId, height, onSelectNode]);
+  }, [topologyFingerprint, height]);
+
+  // Separate, lightweight effect to handle node selection styling without restarting physics!
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+    svg.selectAll('.node-item').each(function(d: any) {
+      const isSelected = d && d.id === selectedNodeId;
+      d3.select(this).select('circle.selection-ring')
+        .attr('stroke', isSelected ? '#67242B' : 'transparent')
+        .attr('stroke-width', isSelected ? 2.5 : 0);
+    });
+  }, [selectedNodeId]);
+
+  // Separate effect to handle highlighted path updates without rebuilding the whole simulation!
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+
+    // Update edge highlights
+    svg.selectAll('.edge-line').each(function(d: any) {
+      if (!d) return;
+      const isPath = pathEdgeKeys.has(`${d.source.id || d.source}->${d.target.id || d.target}`) ||
+                     pathEdgeKeys.has(`${d.target.id || d.target}->${d.source.id || d.source}`);
+      d3.select(this)
+        .attr('stroke', isPath ? '#67242B' : 'rgba(103, 36, 43, 0.22)')
+        .attr('stroke-width', isPath ? 2.5 : 1.2)
+        .attr('stroke-dasharray', isPath ? '6,3' : 'none')
+        .attr('marker-end', isPath ? 'url(#arrow-highlight)' : 'url(#arrow-default)');
+    });
+
+    // Update edge label highlights
+    svg.selectAll('.edge-label').each(function(d: any) {
+      if (!d) return;
+      const isPath = pathEdgeKeys.has(`${d.source.id || d.source}->${d.target.id || d.target}`) ||
+                     pathEdgeKeys.has(`${d.target.id || d.target}->${d.source.id || d.source}`);
+      d3.select(this)
+        .attr('fill', isPath ? '#67242B' : '#8E545B')
+        .attr('font-weight', isPath ? '700' : '400');
+    });
+
+    // Update node path halos
+    svg.selectAll('.node-item').each(function(d: any) {
+      if (!d) return;
+      const isPath = pathNodeIds.has(d.id);
+      const sel = d3.select(this);
+      let halo = sel.select('.path-halo');
+      if (isPath) {
+        if (halo.empty()) {
+          sel.insert('circle', ':first-child')
+            .attr('class', 'path-halo')
+            .attr('r', 25)
+            .attr('fill', 'none')
+            .attr('stroke', '#A83E49')
+            .attr('stroke-width', 2.5)
+            .attr('stroke-dasharray', '4,2')
+            .attr('opacity', 0.9);
+        }
+      } else {
+        halo.remove();
+      }
+    });
+  }, [pathNodeIds, pathEdgeKeys]);
+
+  // Recenter / Reset View callback
+  const handleResetView = useCallback(() => {
+    if (!svgRef.current || !zoomBehaviorRef.current) return;
+    const svg = d3.select(svgRef.current);
+    svg.transition().duration(400).call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
+    setZoomLevel(1);
+    if (simulationRef.current) {
+      simulationRef.current.alpha(0.15).restart();
+    }
+  }, []);
 
   return (
     <div style={{ position: 'relative', width: '100%', height, background: '#F2F2F2', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
@@ -337,8 +472,28 @@ export default function ConnectedGraphViewer({
         )}
       </div>
 
-      <div style={{ position: 'absolute', top: 12, right: 14, color: 'var(--text-secondary)', fontSize: '10px', fontFamily: 'var(--font-mono)', background: 'rgba(255, 255, 255, 0.94)', padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(103, 36, 43, 0.06)' }}>
-        SCROLL TO ZOOM · DRAG TO REPOSITION ({Math.round(zoomLevel * 100)}%)
+      <div style={{ position: 'absolute', top: 12, right: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button
+          onClick={handleResetView}
+          title="Reset Zoom & Recenter Layout"
+          style={{
+            color: 'var(--accent-burgundy)',
+            fontSize: '10px',
+            fontFamily: 'var(--font-mono)',
+            background: 'rgba(255, 255, 255, 0.94)',
+            padding: '5px 10px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)',
+            boxShadow: '0 2px 8px rgba(103, 36, 43, 0.06)',
+            cursor: 'pointer',
+            fontWeight: 600,
+          }}
+        >
+          ↺ RECENTER
+        </button>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '10px', fontFamily: 'var(--font-mono)', background: 'rgba(255, 255, 255, 0.94)', padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(103, 36, 43, 0.06)' }}>
+          SCROLL TO ZOOM · DRAG TO PIN ({Math.round(zoomLevel * 100)}%)
+        </div>
       </div>
     </div>
   );

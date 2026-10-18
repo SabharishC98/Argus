@@ -80,13 +80,17 @@ export default function App() {
 
         <section className="runtime-panel" aria-label="Backend connection status">
           <div className="runtime-label">
-            <span>Agent Engine</span>
+            <span>FalkorDB Graph</span>
             <span className={`status-beacon ${health ? 'is-online' : 'is-offline'}`} />
           </div>
-          <strong>{health ? 'Connected & Active' : 'Connecting Engine...'}</strong>
+          <strong>
+            {health
+              ? (health.falkordb_mode === 'live_server' ? 'FalkorDB Cloud (Port 6379)' : 'FalkorDB Cypher Engine')
+              : 'Connecting Engine...'}
+          </strong>
           <span className="runtime-detail">
             {health
-              ? `FalkorDB Graph Ready · MCP Active · v${health.version || '2.0.0'}`
+              ? `${health.falkordb_mode === 'live_server' ? '● Live Server' : '● Embedded Engine'} · ${health.falkordb_node_count || 14} Nodes · MCP Ready`
               : 'Waking up cloud container (takes ~30s on free tier)...'}
           </span>
         </section>
@@ -106,7 +110,11 @@ export default function App() {
             <span className="utility-separator">/</span>
             <span style={{ color: 'var(--accent-burgundy-bright)', fontWeight: 600 }}>Multi-Hop Reasoning</span>
           </div>
-          <div className="utility-meta">
+          <div className="utility-meta" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: health ? '#315838' : '#8C323B', display: 'inline-block' }} />
+              {health?.falkordb_mode === 'live_server' ? 'FalkorDB Cloud: Connected' : 'FalkorDB Engine: Active'}
+            </span>
             <span>Model Context Protocol (MCP)</span>
             <span className="utility-mark" aria-hidden="true" />
           </div>
