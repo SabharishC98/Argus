@@ -554,7 +554,7 @@ Tests validate:
 
 ## 16. Authors & Hackathon Submission
 
-- **Repository**: [SabharishC98/ShadowLens-Agent](https://github.com/SabharishC98/ShadowLens-Agent)
+- **Repository**: [SabharishC98/Argus](https://github.com/SabharishC98/Argus)
 - **Theme**: Agents That Act on Connected Data
 - **Primary Graph Database**: **FalkorDB** (openCypher, Redis-compatible, embedded graph engine)
 - **Stack**: Autonomous Graph Agent + Model Context Protocol (MCP) + FalkorDB + NetworkX + React 19 / D3
