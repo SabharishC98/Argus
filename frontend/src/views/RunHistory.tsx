@@ -63,7 +63,7 @@ export default function RunHistory() {
     const csv      = [headers.join(','), ...rows].join('\n');
     const a        = document.createElement('a');
     a.href         = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    a.download     = `shadowlens_runs_${Date.now()}.csv`;
+    a.download     = `argus_runs_${Date.now()}.csv`;
     a.click();
   };
 
@@ -96,11 +96,11 @@ export default function RunHistory() {
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={compareData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="technique" tick={{ fill: 'rgba(255, 255, 255, 0.75)', fontSize: 11 }} />
-              <YAxis tick={{ fill: 'rgba(255, 255, 255, 0.75)', fontSize: 11 }} domain={[0, 1]} />
+              <XAxis dataKey="technique" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} domain={[0, 1]} />
               <Tooltip
-                contentStyle={{ background: '#000000', border: '1px solid var(--border)', borderRadius: 0 }}
-                labelStyle={{ color: '#ffffff' }}
+                contentStyle={{ background: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}
+                labelStyle={{ color: 'var(--text-primary)' }}
               />
               <Legend />
               {[...new Set(selectedRuns.map(r => r.model))].map((model, i) => (
@@ -169,23 +169,23 @@ export default function RunHistory() {
                       style={{ cursor: 'pointer' }}
                     />
                   </td>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     {new Date(run.created_at).toLocaleString().slice(0, 16)}
                   </td>
                   <td>
                     <span className="badge" style={{
-                      background: 'rgba(185, 145, 74, 0.07)',
-                      color: palette.goldBright,
-                      border: '1px solid rgba(185, 145, 74, 0.3)',
+                      background: 'rgba(103, 36, 43, 0.08)',
+                      color: 'var(--accent-burgundy)',
+                      border: '1px solid rgba(103, 36, 43, 0.25)',
                       fontSize: '0.66rem'
                     }}>
                       {run.technique.replace(/_/g, ' ')}
                     </span>
                   </td>
-                  <td style={{ fontSize: '0.8rem', color: '#B8BFC5' }}>
+                  <td style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>
                     {run.model.split('/').pop()}
                   </td>
-                  <td style={{ fontSize: '0.78rem', color: '#91989E', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {run.task_preview}
                   </td>
                   <td>
@@ -195,14 +195,14 @@ export default function RunHistory() {
                   </td>
                   <td style={{
                     fontFamily: 'monospace', fontWeight: 700,
-                    color: '#ffffff',
+                    color: 'var(--accent-burgundy)',
                   }}>
                     {(run.propagation_rate * 100).toFixed(0)}%
                   </td>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#64748b' }}>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                     {run.max_drift_score.toFixed(3)}
                   </td>
-                  <td>{run.goal_violated ? <span style={{ color: palette.goldBright }}>⚠</span> : <span style={{ color: palette.silver }}>✓</span>}</td>
+                  <td>{run.goal_violated ? <span style={{ color: 'var(--accent-burgundy)' }}>⚠</span> : <span style={{ color: 'var(--status-safe)' }}>✓</span>}</td>
                   <td>{run.terminal_success ? <span style={{ color: palette.goldBright }}>⚡</span> : <span style={{ color: palette.silver }}>✓</span>}</td>
                 </tr>
               ))}

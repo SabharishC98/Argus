@@ -80,15 +80,31 @@ app = FastAPI(
     lifespan    = lifespan,
 )
 
-# CORS
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,*").split(",")
+# CORS — allow deployed frontend (e.g. Vercel) and localhost
+cors_origins_env = os.getenv("CORS_ORIGINS")
+allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()] if cors_origins_env else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins     = cors_origins,
-    allow_credentials = True,
+    allow_origins     = allowed_origins,
+    allow_credentials = False,
     allow_methods     = ["*"],
     allow_headers     = ["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import traceback
+    from fastapi.responses import JSONResponse
+    tb = traceback.format_exc()
+    logger.error("Unhandled exception on %s %s: %s\n%s", request.method, request.url, exc, tb)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "type": type(exc).__name__, "traceback": tb.splitlines()[-4:]},
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
+
 
 
 # ── Routers ────────────────────────────────────────────────────────────────────

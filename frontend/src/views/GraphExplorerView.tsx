@@ -90,22 +90,17 @@ export default function GraphExplorerView() {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* ── Page Header ── */}
+      <div className="page-header">
         <div>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#f8fafc' }}>
-            Connected Knowledge Graph Explorer
-          </h2>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94a3b8' }}>
-            Direct interactive exploration of the multi-agent security topology and graph algorithms.
-          </p>
+          <h2>Graph Explorer</h2>
+          <p>Direct interactive exploration of the connected knowledge graph and graph traversal algorithms</p>
         </div>
-
         <button
           onClick={fetchGraph}
           disabled={loading}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: '12px' }}
+          className="btn btn-secondary"
         >
           <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
           Reload Graph
@@ -114,65 +109,65 @@ export default function GraphExplorerView() {
 
       {/* Metrics Row */}
       {overview && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, padding: '12px' }}>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>TOTAL NODES</div>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#f8fafc' }}>{overview.total_nodes}</div>
+        <div className="stat-grid" style={{ margin: 0 }}>
+          <div className="stat-card">
+            <div className="stat-label">TOTAL NODES</div>
+            <div className="stat-value">{overview.total_nodes}</div>
+            <div className="stat-desc">Entities mapped</div>
           </div>
-          <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, padding: '12px' }}>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>TOTAL RELATIONSHIPS</div>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#38bdf8' }}>{overview.total_edges}</div>
+          <div className="stat-card">
+            <div className="stat-label">TOTAL RELATIONSHIPS</div>
+            <div className="stat-value" style={{ color: 'var(--accent-gold)' }}>{overview.total_edges}</div>
+            <div className="stat-desc">Graph edges</div>
           </div>
-          <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, padding: '12px' }}>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>CRITICAL ASSETS</div>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#ef4444' }}>
+          <div className="stat-card highlighted-gold">
+            <div className="stat-label">CRITICAL ASSETS</div>
+            <div className="stat-value">
               {overview.risk_distribution['CRITICAL'] || 0}
             </div>
+            <div className="stat-desc">High risk nodes</div>
           </div>
-          <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, padding: '12px' }}>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>HIGH-RISK NODES</div>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#f97316' }}>
+          <div className="stat-card">
+            <div className="stat-label">HIGH-RISK NODES</div>
+            <div className="stat-value" style={{ color: 'var(--accent-gold-bright)' }}>
               {overview.risk_distribution['HIGH'] || 0}
             </div>
+            <div className="stat-desc">Reachable nodes</div>
           </div>
         </div>
       )}
 
       {/* Filter Bar */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#0f172a', padding: '10px 14px', borderRadius: 6, border: '1px solid #1e293b' }}>
-        <Search size={15} color="#64748b" />
+      <div className="card" style={{ padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
+        <Search size={15} color="var(--text-muted)" />
         <input
           type="text"
+          className="form-input"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Filter nodes by ID or label..."
-          style={{ flex: 1, background: 'transparent', border: 'none', color: '#f1f5f9', fontSize: '12px', outline: 'none' }}
+          placeholder="Filter nodes by ID, label, or path..."
+          style={{ flex: 1, padding: '7px 10px', fontSize: '12px' }}
         />
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {['ALL', 'APIEndpoint', 'Dependency', 'DatabaseQuery', 'Vulnerability', 'Finding', 'CloudResource'].map(t => (
-            <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
-              style={{
-                background: typeFilter === t ? '#38bdf8' : '#1e293b',
-                color: typeFilter === t ? '#0f172a' : '#94a3b8',
-                border: 'none',
-                padding: '3px 8px',
-                borderRadius: 4,
-                fontSize: '11px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {t}
-            </button>
-          ))}
+          {['ALL', 'APIEndpoint', 'Dependency', 'DatabaseQuery', 'Vulnerability', 'Finding', 'CloudResource'].map(t => {
+            const isChecked = typeFilter === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                className={`tab-btn ${isChecked ? 'active' : ''}`}
+                style={{ padding: '5px 10px', fontSize: '10px' }}
+              >
+                {t}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Main Content Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(340px, 1fr)', gap: 20 }}>
         {/* Graph Viewer */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <ConnectedGraphViewer
@@ -186,21 +181,21 @@ export default function GraphExplorerView() {
         </div>
 
         {/* Algorithm Console & Inspector */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Algorithm Runner Card */}
-          <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: '14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>
-              <Cpu size={15} color="#38bdf8" />
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <Cpu size={15} color="var(--accent-gold)" />
               <span>Execute Graph Algorithm</span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div>
-                <label style={{ fontSize: '11px', color: '#94a3b8' }}>Algorithm</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Algorithm</label>
                 <select
                   value={algorithm}
                   onChange={e => setAlgorithm(e.target.value)}
-                  style={{ width: '100%', background: '#090d16', border: '1px solid #334155', color: '#f8fafc', padding: '6px 8px', borderRadius: 4, fontSize: '12px' }}
+                  className="form-select"
                 >
                   {ALGORITHMS.map(a => (
                     <option key={a.id} value={a.id}>{a.label}</option>
@@ -208,24 +203,24 @@ export default function GraphExplorerView() {
                 </select>
               </div>
 
-              <div>
-                <label style={{ fontSize: '11px', color: '#94a3b8' }}>Source Entity ID</label>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Source Entity ID</label>
                 <input
                   type="text"
                   value={sourceId}
                   onChange={e => setSourceId(e.target.value)}
-                  style={{ width: '100%', background: '#090d16', border: '1px solid #334155', color: '#f8fafc', padding: '6px 8px', borderRadius: 4, fontSize: '12px' }}
+                  className="form-input"
                 />
               </div>
 
               {algorithm === 'shortest_path' && (
-                <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8' }}>Target Entity ID</label>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Target Entity ID</label>
                   <input
                     type="text"
                     value={targetId}
                     onChange={e => setTargetId(e.target.value)}
-                    style={{ width: '100%', background: '#090d16', border: '1px solid #334155', color: '#f8fafc', padding: '6px 8px', borderRadius: 4, fontSize: '12px' }}
+                    className="form-input"
                   />
                 </div>
               )}
@@ -233,34 +228,21 @@ export default function GraphExplorerView() {
               <button
                 onClick={handleRunAlgorithm}
                 disabled={algoLoading}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  background: '#0284c7',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  cursor: algoLoading ? 'not-allowed' : 'pointer',
-                  marginTop: 4,
-                }}
+                className="btn btn-primary"
+                style={{ width: '100%', marginTop: 4 }}
               >
                 <Play size={13} />
-                <span>{algoLoading ? 'Executing...' : 'Run Graph Algorithm'}</span>
+                <span>{algoLoading ? 'Executing Algorithm...' : 'Run Graph Algorithm'}</span>
               </button>
             </div>
 
             {/* Algorithm Output */}
             {algoResult && (
-              <div style={{ marginTop: 6, background: '#090d16', padding: '10px', borderRadius: 6, border: '1px solid #334155' }}>
-                <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 600, marginBottom: 4 }}>
+              <div style={{ marginTop: 8, background: '#FAF8F8', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '10px', color: 'var(--accent-gold-bright)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
                   Algorithm Execution Output:
                 </div>
-                <pre style={{ margin: 0, fontSize: '11px', color: '#cbd5e1', maxHeight: 180, overflowY: 'auto' }}>
+                <pre style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)', maxHeight: 180, overflowY: 'auto', fontFamily: 'var(--font-mono)' }}>
                   {JSON.stringify(algoResult, null, 2)}
                 </pre>
               </div>
@@ -269,15 +251,15 @@ export default function GraphExplorerView() {
 
           {/* Node Inspector */}
           {selectedNode && (
-            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: '14px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc', marginBottom: 4 }}>
+            <div className="card" style={{ borderColor: 'var(--accent-gold)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: 6 }}>
                 Selected Entity Inspector
               </div>
-              <div style={{ fontSize: '12px', color: '#38bdf8' }}>{selectedNode.label}</div>
-              <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'ui-monospace, monospace' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-gold-bright)' }}>{selectedNode.label}</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', margin: '4px 0 8px' }}>
                 {selectedNode.id} · {selectedNode.type} · Risk: {selectedNode.risk_level}
               </div>
-              <pre style={{ margin: '8px 0 0', background: '#090d16', padding: '8px', borderRadius: 4, fontSize: '10px', color: '#cbd5e1', maxHeight: 120, overflowY: 'auto' }}>
+              <pre style={{ margin: 0, background: '#FAF8F8', border: '1px solid var(--border)', padding: '10px', borderRadius: 'var(--radius-sm)', fontSize: '10px', color: 'var(--text-secondary)', maxHeight: 120, overflowY: 'auto' }}>
                 {JSON.stringify(selectedNode.properties, null, 2)}
               </pre>
             </div>

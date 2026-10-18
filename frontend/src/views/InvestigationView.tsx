@@ -90,6 +90,11 @@ export default function InvestigationView() {
 
   useEffect(() => {
     fetchStatusAndGraph();
+    // Auto-retry once after 6 seconds in case cloud backend was spinning up from cold-start
+    const timer = setTimeout(() => {
+      fetchStatusAndGraph();
+    }, 6000);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleLaunch = async (customQuery?: string, customTarget?: string) => {
@@ -155,31 +160,48 @@ export default function InvestigationView() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* ── Requirement 1: Real Data Ingestion & Data Source Bar ── */}
-      <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: 8, padding: '12px 16px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* ── Page Header matching theme ── */}
+      <div className="page-header">
+        <div>
+          <h2>Agent Investigation</h2>
+          <p>Autonomous graph-powered agent acting on connected data via multi-hop reasoning and MCP tools</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="badge badge-high" style={{ padding: '6px 12px', fontSize: '10px' }}>
+            FalkorDB Powered
+          </span>
+          <span className="badge" style={{ padding: '6px 12px', fontSize: '10px', color: 'var(--accent-gold)' }}>
+            12 MCP Tools Active
+          </span>
+        </div>
+      </div>
+
+      {/* ── Real Data Ingestion & Data Source Bar ── */}
+      <div className="card" style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <FolderGit2 size={16} color="#38bdf8" />
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
-              Active Graph Data Source:
+            <FolderGit2 size={16} color="var(--accent-gold)" />
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)' }}>
+              Active Knowledge Graph:
             </span>
             <span
               style={{
                 fontSize: '11px',
                 fontWeight: 700,
-                padding: '3px 8px',
-                borderRadius: 4,
-                background: ingestionStatus?.active_source === 'real_repository' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.15)',
-                color: ingestionStatus?.active_source === 'real_repository' ? '#34d399' : '#38bdf8',
-                border: ingestionStatus?.active_source === 'real_repository' ? '1px solid #10b981' : '1px solid #0284c7',
-                fontFamily: 'ui-monospace, monospace',
+                padding: '3px 10px',
+                borderRadius: 'var(--radius-sm)',
+                background: ingestionStatus?.active_source === 'real_repository' ? 'rgba(229, 169, 60, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                color: ingestionStatus?.active_source === 'real_repository' ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
+                border: ingestionStatus?.active_source === 'real_repository' ? '1px solid var(--border-bright)' : '1px solid var(--border)',
+                fontFamily: 'var(--font-mono)',
+                letterSpacing: '0.05em',
               }}
             >
-              {ingestionStatus?.active_source === 'real_repository' ? '● REAL REPOSITORY' : '○ SEED / DEMO DATASET'}
+              {ingestionStatus?.active_source === 'real_repository' ? '● REAL REPOSITORY' : '○ SEED DEMO DATASET'}
             </span>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-              ({ingestionStatus?.repo_name || 'ShadowLens Graph'})
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              {ingestionStatus?.repo_name || 'Argus Knowledge Graph'}
             </span>
           </div>
 
@@ -187,163 +209,94 @@ export default function InvestigationView() {
             <button
               onClick={handleResetSeed}
               disabled={ingesting}
-              style={{
-                background: 'transparent',
-                border: '1px solid #334155',
-                color: '#94a3b8',
-                padding: '5px 10px',
-                borderRadius: 5,
-                fontSize: '11px',
-                cursor: ingesting ? 'not-allowed' : 'pointer',
-              }}
+              className="btn btn-secondary"
+              style={{ fontSize: '10px', padding: '5px 12px' }}
             >
-              Use Seed/Demo Dataset
+              Reset to Seed Dataset
             </button>
           </div>
         </div>
 
         {/* Real Repository Ingest Row */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center' }}>
           <input
             type="text"
+            className="form-input"
             value={repoUrlInput}
             onChange={e => setRepoUrlInput(e.target.value)}
-            placeholder="https://github.com/owner/repo or local/path"
-            style={{
-              flex: 1,
-              background: '#0f172a',
-              border: '1px solid #334155',
-              borderRadius: 5,
-              color: '#f8fafc',
-              padding: '6px 12px',
-              fontSize: '12px',
-              outline: 'none',
-              fontFamily: 'ui-monospace, monospace',
-            }}
+            placeholder="Enter public GitHub repository URL (e.g. https://github.com/pallets/flask)"
+            style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '12px' }}
           />
           <button
             onClick={handleIngestRepo}
             disabled={ingesting}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: ingesting ? '#475569' : '#0284c7',
-              color: '#ffffff',
-              border: 'none',
-              padding: '6px 14px',
-              borderRadius: 5,
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: ingesting ? 'not-allowed' : 'pointer',
-            }}
+            className="btn btn-primary"
+            style={{ minWidth: 180 }}
           >
-            {ingesting ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <GitBranch size={13} />}
-            <span>{ingesting ? 'Analyzing Repo & OSV...' : 'Analyze Repository'}</span>
+            {ingesting ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <GitBranch size={14} />}
+            <span>{ingesting ? 'Analyzing Repo...' : 'Analyze Repository'}</span>
           </button>
         </div>
 
         {ingestMessage && (
-          <div style={{ marginTop: 8, fontSize: '11px', color: ingestMessage.startsWith('✓') ? '#34d399' : '#f87171' }}>
+          <div style={{ marginTop: 10, fontSize: '11px', fontFamily: 'var(--font-mono)', color: ingestMessage.startsWith('✓') ? 'var(--accent-gold-bright)' : '#e06c75' }}>
             {ingestMessage}
           </div>
         )}
       </div>
 
-      {/* Header & Scenario Pills */}
+      {/* Preset Scenario Cards */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.02em' }}>
-            Autonomous Graph Investigation
-          </h2>
-          <span style={{ fontSize: '11px', color: '#94a3b8', background: '#1e293b', padding: '4px 10px', borderRadius: 4, fontFamily: 'ui-monospace, monospace' }}>
-            THEME: Agents That Act on Connected Data
-          </span>
+        <div className="section-title">
+          Benchmark & Demo Investigation Scenarios
         </div>
-        <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#94a3b8' }}>
-          ShadowLens Agent autonomously plans multi-hop traversals, queries graph relationships through MCP tools, calculates quantitative risk, takes mitigation actions, and provides an explainable evidence trail.
-        </p>
 
-        {/* Demo Scenario Quick-Launch Buttons */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-          {DEMO_SCENARIOS.map((sc, i) => (
-            <button
-              key={i}
-              onClick={() => selectScenario(sc)}
-              disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                background: sc.highlight
-                  ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(239, 68, 68, 0.15))'
-                  : sc.honest
-                  ? 'rgba(56, 189, 248, 0.1)'
-                  : targetEntity === sc.target
-                  ? '#1e293b'
-                  : '#0f172a',
-                border: sc.highlight
-                  ? '1px solid #f59e0b'
-                  : sc.honest
-                  ? '1px solid #38bdf8'
-                  : targetEntity === sc.target
-                  ? '1px solid #f59e0b'
-                  : '1px solid #334155',
-                color: '#f1f5f9',
-                padding: '8px 12px',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              {sc.highlight ? (
-                <TrendingUp size={14} color="#f59e0b" />
-              ) : sc.honest ? (
-                <HelpCircle size={14} color="#38bdf8" />
-              ) : (
-                <Sparkles size={14} color="#f59e0b" />
-              )}
-              <span>{sc.title}</span>
-              <span
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+          {DEMO_SCENARIOS.map((sc, i) => {
+            const isSelected = targetEntity === sc.target;
+            return (
+              <div
+                key={i}
+                className="card"
+                onClick={() => selectScenario(sc)}
                 style={{
-                  fontSize: '10px',
-                  background: sc.highlight
-                    ? 'rgba(245, 158, 11, 0.25)'
-                    : sc.honest
-                    ? 'rgba(56, 189, 248, 0.2)'
-                    : 'rgba(245, 158, 11, 0.15)',
-                  color: sc.highlight ? '#fbbf24' : sc.honest ? '#38bdf8' : '#fbbf24',
-                  padding: '1px 6px',
-                  borderRadius: 3,
-                  fontFamily: 'ui-monospace, monospace',
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  borderColor: isSelected ? 'var(--accent-gold)' : sc.highlight ? 'rgba(229, 169, 60, 0.45)' : 'var(--border)',
+                  background: isSelected ? 'rgba(229, 169, 60, 0.08)' : 'var(--bg-card)',
+                  transition: 'all 0.18s ease',
                 }}
               >
-                {sc.badge}
-              </span>
-            </button>
-          ))}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-gold)' }}>
+                    {sc.highlight ? <TrendingUp size={14} /> : sc.honest ? <HelpCircle size={14} /> : <Sparkles size={14} />}
+                    <span style={{ font: '600 10px var(--font-mono)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      {sc.badge}
+                    </span>
+                  </span>
+                  {isSelected && <span style={{ color: 'var(--accent-gold)', fontSize: '11px', fontWeight: 700 }}>● Active</span>}
+                </div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4, marginBottom: 4 }}>
+                  {sc.title}
+                </div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  Target: {sc.target}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Query Bar */}
-      <div style={{ display: 'flex', gap: 10, background: '#0f172a', padding: '10px 14px', borderRadius: 8, border: '1px solid #1e293b' }}>
+      <div className="card" style={{ padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
         <input
           type="text"
+          className="form-input"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Enter investigation prompt or suspicious entity ID..."
-          style={{
-            flex: 1,
-            background: '#090d16',
-            border: '1px solid #334155',
-            borderRadius: 6,
-            color: '#f8fafc',
-            padding: '10px 14px',
-            fontSize: '13px',
-            outline: 'none',
-          }}
+          placeholder="Enter investigation prompt or target entity ID..."
+          style={{ flex: 1, fontSize: '13px' }}
           onKeyDown={e => {
             if (e.key === 'Enter') handleLaunch();
           }}
@@ -352,28 +305,17 @@ export default function InvestigationView() {
         <button
           onClick={() => handleLaunch()}
           disabled={loading}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: loading ? '#475569' : '#0284c7',
-            color: '#ffffff',
-            border: 'none',
-            padding: '10px 18px',
-            borderRadius: 6,
-            fontWeight: 600,
-            fontSize: '13px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
+          className="btn btn-primary"
+          style={{ minWidth: 190 }}
         >
           {loading ? (
             <>
-              <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
-              <span>Agent Investigating...</span>
+              <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+              <span>Investigating...</span>
             </>
           ) : (
             <>
-              <Play size={15} />
+              <Play size={14} />
               <span>Run Investigation</span>
             </>
           )}
@@ -381,14 +323,16 @@ export default function InvestigationView() {
       </div>
 
       {/* Main Split Layout: Left Graph, Right Timeline & Decision */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(360px, 1fr)', gap: 20 }}>
         {/* Left: Connected Graph Canvas */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>
-              <Database size={15} color="#38bdf8" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <Database size={15} color="var(--accent-gold)" />
               <span>Connected Security Knowledge Graph</span>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>({graphNodes.length} nodes · {graphEdges.length} edges)</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                ({graphNodes.length} nodes · {graphEdges.length} edges)
+              </span>
             </div>
 
             <button
@@ -399,9 +343,10 @@ export default function InvestigationView() {
                   setHighlightedPath(null);
                 });
               }}
-              style={{ background: 'transparent', border: '1px solid #334155', color: '#94a3b8', padding: '3px 8px', borderRadius: 4, fontSize: '11px', cursor: 'pointer' }}
+              className="btn btn-secondary"
+              style={{ fontSize: '9px', padding: '4px 10px', minHeight: 28 }}
             >
-              Reset to Full Graph
+              Reset Full Graph
             </button>
           </div>
 
@@ -416,19 +361,19 @@ export default function InvestigationView() {
 
           {/* Node Inspector Drawer */}
           {selectedNode && (
-            <div style={{ background: '#0f172a', border: '1px solid #38bdf8', borderRadius: 6, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="card" style={{ borderColor: 'var(--accent-gold)', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-gold-bright)' }}>
                   {selectedNode.label}
                 </span>
-                <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'ui-monospace, monospace' }}>
+                <span className="badge badge-high">
                   {selectedNode.type} · Risk: {selectedNode.risk_level} ({selectedNode.risk_score.toFixed(2)})
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'ui-monospace, monospace' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                 ID: {selectedNode.id}
               </div>
-              <pre style={{ margin: 0, fontSize: '10px', color: '#cbd5e1', background: '#090d16', padding: '6px 8px', borderRadius: 4, maxHeight: 90, overflowY: 'auto' }}>
+              <pre style={{ margin: 0, fontSize: '10px', color: 'var(--text-secondary)', background: '#FAF8F8', border: '1px solid var(--border)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', maxHeight: 110, overflowY: 'auto' }}>
                 {JSON.stringify(selectedNode.properties, null, 2)}
               </pre>
             </div>
@@ -448,13 +393,13 @@ export default function InvestigationView() {
               <AgentTimeline events={investigation.timeline} isLive={loading} />
             </>
           ) : (
-            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: '32px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-              <Terminal size={32} color="#475569" />
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#e2e8f0' }}>
+            <div className="card" style={{ padding: '48px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+              <Terminal size={36} color="var(--border-bright)" />
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-editorial)' }}>
                 Autonomous Investigation Agent Ready
               </div>
-              <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', maxWidth: 360, lineHeight: '1.5' }}>
-                Click one of the preset scenarios above (including <strong>Scenario 4 Non-Obvious Insight</strong> and <strong>Scenario 5 Failure Honesty</strong>) or enter a custom query to start the multi-hop reasoning loop.
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', maxWidth: 360, lineHeight: 1.6 }}>
+                Click one of the benchmark scenarios above or enter a target entity ID to initiate autonomous multi-hop traversal in FalkorDB.
               </p>
             </div>
           )}

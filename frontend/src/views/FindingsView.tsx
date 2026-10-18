@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { ShieldAlert, CheckCircle, RefreshCw, Hash, Shield, Lock, FileText } from 'lucide-react';
+import { ShieldAlert, CheckCircle, RefreshCw, Hash, Shield, Lock, FileText, History } from 'lucide-react';
 import { api, type Finding, type ActionReceipt } from '../services/api';
+import RunHistory from './RunHistory';
 
 export default function FindingsView() {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [actions, setActions] = useState<ActionReceipt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'findings' | 'actions'>('findings');
+  const [tab, setTab] = useState<'findings' | 'actions' | 'archive'>('findings');
 
   useEffect(() => {
     loadData();
@@ -26,112 +27,96 @@ export default function FindingsView() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* ── Page Header ── */}
+      <div className="page-header">
         <div>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#f8fafc' }}>
-            Autonomous Findings & Action Ledger
-          </h2>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94a3b8' }}>
-            Verifiable record of agent-created security findings and automated remediation executions.
-          </p>
+          <h2>Findings & Actions</h2>
+          <p>Verifiable record of agent-created security findings, autonomous remediation actions, and run history</p>
         </div>
 
-        <button
-          onClick={loadData}
-          disabled={loading}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: '12px' }}
-        >
-          <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-          Refresh Ledger
-        </button>
+        {tab !== 'archive' && (
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="btn btn-secondary"
+          >
+            <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            Refresh Ledger
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #1e293b', paddingBottom: 8 }}>
+      <div className="tab-group" style={{ margin: 0 }}>
         <button
           onClick={() => setTab('findings')}
-          style={{
-            background: tab === 'findings' ? '#0284c7' : '#0f172a',
-            color: tab === 'findings' ? '#ffffff' : '#94a3b8',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontWeight: 600,
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
+          className={`tab-btn ${tab === 'findings' ? 'active' : ''}`}
         >
-          <ShieldAlert size={15} />
+          <ShieldAlert size={14} />
           <span>Security Findings ({findings.length})</span>
         </button>
 
         <button
           onClick={() => setTab('actions')}
-          style={{
-            background: tab === 'actions' ? '#0284c7' : '#0f172a',
-            color: tab === 'actions' ? '#ffffff' : '#94a3b8',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontWeight: 600,
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
+          className={`tab-btn ${tab === 'actions' ? 'active' : ''}`}
         >
-          <Lock size={15} />
+          <Lock size={14} />
           <span>Remediation Action Receipts ({actions.length})</span>
+        </button>
+
+        <button
+          onClick={() => setTab('archive')}
+          className={`tab-btn ${tab === 'archive' ? 'active' : ''}`}
+        >
+          <History size={14} />
+          <span>Run Archive & Execution Audit</span>
         </button>
       </div>
 
       {/* Content */}
-      {tab === 'findings' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {tab === 'archive' ? (
+        <RunHistory />
+      ) : tab === 'findings' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {findings.length === 0 ? (
-            <div style={{ padding: '36px', textAlign: 'center', color: '#64748b', background: '#0f172a', borderRadius: 8, border: '1px dashed #1e293b' }}>
+            <div className="card" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
               No security findings recorded yet. Run an investigation to generate formal graph-backed findings.
             </div>
           ) : (
             findings.map((f, i) => (
-              <div key={i} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div key={i} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ background: f.severity === 'CRITICAL' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(249, 115, 22, 0.15)', color: f.severity === 'CRITICAL' ? '#f87171' : '#fb923c', padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: '11px', fontFamily: 'ui-monospace, monospace' }}>
+                    <span className={f.severity === 'CRITICAL' ? 'badge badge-critical' : 'badge badge-high'}>
                       {f.severity}
                     </span>
-                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#f8fafc' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
                       {f.title}
                     </span>
                   </div>
 
-                  <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'ui-monospace, monospace' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                     {f.finding_id} · {f.created_at}
                   </span>
                 </div>
 
-                <p style={{ margin: 0, fontSize: '13px', color: '#cbd5e1' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
                   {f.description}
                 </p>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                  <span style={{ fontSize: '11px', color: '#64748b' }}>Affected Entities:</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Affected Entities:</span>
                   {f.affected_entities.map((e, idx) => (
-                    <span key={idx} style={{ background: '#1e293b', color: '#38bdf8', padding: '2px 6px', borderRadius: 4, fontSize: '11px', fontFamily: 'ui-monospace, monospace' }}>
+                    <span key={idx} className="badge" style={{ color: 'var(--accent-gold)' }}>
                       {e}
                     </span>
                   ))}
                 </div>
 
                 {f.evidence_paths && f.evidence_paths.length > 0 && (
-                  <div style={{ marginTop: 4, background: '#090d16', padding: '8px 12px', borderRadius: 6, border: '1px solid #1e293b', fontSize: '11px', color: '#fbbf24', fontFamily: 'ui-monospace, monospace' }}>
-                    <strong>Attack Chain:</strong> {f.evidence_paths[0].join(' → ')}
+                  <div style={{ marginTop: 6, background: '#FAF8F8', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '11px', color: 'var(--accent-gold-bright)', fontFamily: 'var(--font-mono)' }}>
+                    <strong style={{ color: 'var(--accent-gold)' }}>ATTACK CHAIN:</strong> {f.evidence_paths[0].join(' → ')}
                   </div>
                 )}
               </div>
@@ -139,39 +124,39 @@ export default function FindingsView() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {actions.length === 0 ? (
-            <div style={{ padding: '36px', textAlign: 'center', color: '#64748b', background: '#0f172a', borderRadius: 8, border: '1px dashed #1e293b' }}>
-              No automated actions executed yet.
+            <div className="card" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No automated remediation actions executed yet.
             </div>
           ) : (
             actions.map((act, i) => (
-              <div key={i} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div key={i} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600, fontSize: '13px' }}>
-                      <CheckCircle size={15} color="#10b981" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ color: 'var(--accent-gold-bright)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: '13px' }}>
+                      <CheckCircle size={15} color="var(--accent-gold)" />
                       {act.action_type}
                     </span>
-                    <span style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', fontSize: '10px', padding: '2px 6px', borderRadius: 4, fontFamily: 'ui-monospace, monospace' }}>
+                    <span className="badge badge-safe">
                       {act.simulation_mode ? 'SAFE SIMULATION' : 'LIVE ENFORCED'}
                     </span>
                   </div>
 
-                  <span style={{ fontFamily: 'ui-monospace, monospace', color: '#64748b', fontSize: '11px' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '11px' }}>
                     {act.action_id}
                   </span>
                 </div>
 
-                <div style={{ fontSize: '13px', color: '#f1f5f9' }}>
+                <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
                   {act.summary}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#090d16', padding: '8px 12px', borderRadius: 6, border: '1px solid #1e293b', fontSize: '11px' }}>
-                  <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Hash size={13} color="#64748b" /> Cryptographic Verification Hash: <code style={{ color: '#94a3b8' }}>{act.verification_hash}</code>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FAF8F8', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '11px' }}>
+                  <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)' }}>
+                    <Hash size={13} color="var(--accent-gold)" /> Cryptographic Receipt: <code style={{ color: 'var(--text-secondary)' }}>{act.verification_hash}</code>
                   </span>
-                  <span style={{ color: '#38bdf8', fontFamily: 'ui-monospace, monospace' }}>
+                  <span style={{ color: 'var(--accent-gold)', fontFamily: 'var(--font-mono)' }}>
                     Target: {act.target_entity_id}
                   </span>
                 </div>

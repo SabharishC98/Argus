@@ -179,10 +179,10 @@ export default function ExperimentRunner() {
           </div>
 
           <div style={{
-            background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border)',
-            borderRadius: 0, padding: '10px 14px', marginBottom: 16, fontSize: '0.82rem', color: '#B8BFC5',
+            background: 'var(--bg-surface)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: 16, fontSize: '0.82rem', color: 'var(--text-secondary)',
           }}>
-            <strong style={{ color: '#ffffff' }}>{totalRuns} total runs</strong><br />
+            <strong style={{ color: 'var(--text-primary)' }}>{totalRuns} total runs</strong><br />
             Est. time at 2min/run: ~{Math.round(totalRuns * 2 / concurrency)} min
           </div>
 
@@ -223,10 +223,10 @@ export default function ExperimentRunner() {
               <div className="progress-bar-wrap" style={{ marginBottom: 10 }}>
                 <div className="progress-bar-fill" style={{ width: `${status.progress_pct}%` }} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 <span>{status.completed_runs} / {status.total_runs} completed</span>
                 <span>{status.progress_pct.toFixed(1)}%</span>
-                <span style={{ color: palette.goldBright }}>{status.failed_runs} failed</span>
+                <span style={{ color: 'var(--accent-burgundy)' }}>{status.failed_runs} failed</span>
               </div>
             </div>
           )}
@@ -238,12 +238,12 @@ export default function ExperimentRunner() {
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="technique" tick={{ fill: 'rgba(255, 255, 255, 0.75)', fontSize: 10 }} />
-                  <YAxis tick={{ fill: 'rgba(255, 255, 255, 0.75)', fontSize: 10 }} domain={[0, 1]}
+                  <XAxis dataKey="technique" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
+                  <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} domain={[0, 1]}
                     tickFormatter={v => `${(v * 100).toFixed(0)}%`} />
                   <Tooltip
-                    contentStyle={{ background: '#000000', border: '1px solid var(--border)', borderRadius: 0 }}
-                    labelStyle={{ color: '#ffffff' }}
+                    contentStyle={{ background: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}
+                    labelStyle={{ color: 'var(--text-primary)' }}
                     formatter={(v: number) => `${(v * 100).toFixed(1)}%`}
                   />
                   <Legend />

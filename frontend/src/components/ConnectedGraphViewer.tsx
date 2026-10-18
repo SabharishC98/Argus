@@ -12,11 +12,11 @@ interface Props {
 }
 
 const RISK_COLORS: Record<string, string> = {
-  CRITICAL: '#ef4444', // Red
-  HIGH:     '#f97316', // Orange
-  MEDIUM:   '#eab308', // Amber/Yellow
-  LOW:      '#3b82f6', // Blue
-  SAFE:     '#10b981', // Emerald
+  CRITICAL: '#67242B', // Brand deep burgundy
+  HIGH:     '#8C323B', // Wine red
+  MEDIUM:   '#A83E49', // Crimson oxblood
+  LOW:      '#968E8F', // Silver soft
+  SAFE:     '#F2F2F2', // Porcelain
 };
 
 const TYPE_ICONS: Record<string, string> = {
@@ -117,7 +117,7 @@ export default function ConnectedGraphViewer({
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#f59e0b');
+      .attr('fill', '#A83E49');
 
     // Glow filter
     const glowFilter = defs.append('filter').attr('id', 'path-glow');
@@ -135,13 +135,13 @@ export default function ConnectedGraphViewer({
     gridPattern.append('circle')
       .attr('cx', 2)
       .attr('cy', 2)
-      .attr('r', 1)
-      .attr('fill', 'rgba(255, 255, 255, 0.08)');
+      .attr('r', 1.2)
+      .attr('fill', 'rgba(103, 36, 43, 0.09)');
 
     svg.append('rect')
       .attr('width', width)
       .attr('height', h)
-      .attr('fill', 'url(#graph-grid)');
+      .attr('fill', '#EAE5DE');
 
     // Zoom container
     const g = svg.append('g').attr('class', 'zoom-group');
@@ -187,15 +187,15 @@ export default function ConnectedGraphViewer({
     // Edge shadow line for path glow
     link.filter(d => !!d.isPathLink)
       .append('line')
-      .attr('stroke', '#f59e0b')
+      .attr('stroke', '#67242B')
       .attr('stroke-width', 6)
-      .attr('stroke-opacity', 0.4)
+      .attr('stroke-opacity', 0.28)
       .attr('filter', 'url(#path-glow)');
 
     // Main edge line
     const edgeLines = link.append('line')
-      .attr('stroke', d => d.isPathLink ? '#f59e0b' : '#374151')
-      .attr('stroke-width', d => d.isPathLink ? 3 : 1.5)
+      .attr('stroke', d => d.isPathLink ? '#67242B' : 'rgba(103, 36, 43, 0.22)')
+      .attr('stroke-width', d => d.isPathLink ? 2.5 : 1.2)
       .attr('stroke-dasharray', d => d.isPathLink ? '6,3' : 'none')
       .attr('marker-end', d => d.isPathLink ? 'url(#arrow-highlight)' : 'url(#arrow-default)');
 
@@ -203,8 +203,9 @@ export default function ConnectedGraphViewer({
     const edgeLabels = link.append('text')
       .attr('class', 'edge-label')
       .attr('font-size', '9px')
-      .attr('fill', d => d.isPathLink ? '#fbbf24' : '#6b7280')
-      .attr('font-family', 'ui-monospace, monospace')
+      .attr('fill', d => d.isPathLink ? '#67242B' : '#8E545B')
+      .attr('font-weight', d => d.isPathLink ? '700' : '400')
+      .attr('font-family', 'var(--font-mono), monospace')
       .attr('text-anchor', 'middle')
       .attr('dy', -4)
       .text(d => d.type);
@@ -243,7 +244,7 @@ export default function ConnectedGraphViewer({
       .append('circle')
       .attr('r', 25)
       .attr('fill', 'none')
-      .attr('stroke', '#f59e0b')
+      .attr('stroke', '#A83E49')
       .attr('stroke-width', 2.5)
       .attr('stroke-dasharray', '4,2')
       .attr('opacity', 0.9);
@@ -253,15 +254,15 @@ export default function ConnectedGraphViewer({
       .append('circle')
       .attr('r', 28)
       .attr('fill', 'none')
-      .attr('stroke', '#38bdf8')
+      .attr('stroke', '#67242B')
       .attr('stroke-width', 2);
 
     // Node base circle
     node.append('circle')
       .attr('r', d => d.isPathNode ? 20 : 17)
-      .attr('fill', '#111827')
-      .attr('stroke', d => RISK_COLORS[d.risk_level] || '#64748b')
-      .attr('stroke-width', d => d.isPathNode ? 3 : 2);
+      .attr('fill', '#FAF6F2')
+      .attr('stroke', d => RISK_COLORS[d.risk_level] || '#8E545B')
+      .attr('stroke-width', d => d.isPathNode ? 3.5 : 2);
 
     // Node emoji/icon
     node.append('text')
@@ -275,8 +276,8 @@ export default function ConnectedGraphViewer({
       .attr('text-anchor', 'middle')
       .attr('dy', 32)
       .attr('font-size', '11px')
-      .attr('font-weight', d => d.isPathNode ? '600' : '400')
-      .attr('fill', d => d.isPathNode ? '#fbbf24' : '#e2e8f0')
+      .attr('font-weight', d => d.isPathNode ? '700' : '500')
+      .attr('fill', d => d.isPathNode ? '#67242B' : '#1F0B0E')
       .text(d => {
         const short = d.label.length > 24 ? d.label.slice(0, 22) + '…' : d.label;
         return short;
@@ -287,7 +288,7 @@ export default function ConnectedGraphViewer({
       .attr('text-anchor', 'middle')
       .attr('dy', 44)
       .attr('font-size', '9px')
-      .attr('fill', '#94a3b8')
+      .attr('fill', '#8E545B')
       .attr('font-family', 'ui-monospace, monospace')
       .text(d => `${d.type} · ${d.risk_level}`);
 
@@ -312,32 +313,32 @@ export default function ConnectedGraphViewer({
   }, [nodes, edges, highlightedPath, pathNodeIds, pathEdgeKeys, selectedNodeId, height, onSelectNode]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height, background: '#0a0f18', borderRadius: 8, overflow: 'hidden', border: '1px solid #1e293b' }}>
+    <div style={{ position: 'relative', width: '100%', height, background: '#F2F2F2', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
       <svg ref={svgRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
       {/* Legend & Controls Overlay */}
-      <div style={{ position: 'absolute', bottom: 12, left: 14, display: 'flex', gap: 10, background: 'rgba(15, 23, 42, 0.85)', padding: '6px 12px', borderRadius: 6, border: '1px solid #334155', fontSize: '11px', backdropFilter: 'blur(4px)' }}>
-        <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} /> Critical
+      <div style={{ position: 'absolute', bottom: 12, left: 14, display: 'flex', gap: 12, background: 'rgba(255, 255, 255, 0.94)', padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '11px', fontFamily: 'var(--font-mono)', backdropFilter: 'blur(6px)', boxShadow: '0 2px 8px rgba(103, 36, 43, 0.08)' }}>
+        <span style={{ color: '#67242B', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#67242B', border: '1px solid #A83E49', display: 'inline-block' }} /> Critical
         </span>
-        <span style={{ color: '#f97316', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f97316', display: 'inline-block' }} /> High
+        <span style={{ color: '#8C323B', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#8C323B', display: 'inline-block' }} /> High
         </span>
-        <span style={{ color: '#eab308', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#eab308', display: 'inline-block' }} /> Medium
+        <span style={{ color: '#A83E49', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#A83E49', display: 'inline-block' }} /> Medium
         </span>
-        <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} /> Safe
+        <span style={{ color: '#315838', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#315838', display: 'inline-block' }} /> Safe
         </span>
         {highlightedPath && (
-          <span style={{ color: '#fbbf24', marginLeft: 8, borderLeft: '1px solid #475569', paddingLeft: 8, fontWeight: 600 }}>
+          <span style={{ color: 'var(--accent-burgundy)', marginLeft: 8, borderLeft: '1px solid var(--border)', paddingLeft: 10, fontWeight: 700 }}>
             ★ Discovered Attack Path ({highlightedPath.hop_count} hops)
           </span>
         )}
       </div>
 
-      <div style={{ position: 'absolute', top: 12, right: 14, color: '#64748b', fontSize: '11px', background: 'rgba(15, 23, 42, 0.75)', padding: '4px 8px', borderRadius: 4 }}>
-        Scroll to Zoom · Drag to Reposition ({Math.round(zoomLevel * 100)}%)
+      <div style={{ position: 'absolute', top: 12, right: 14, color: 'var(--text-secondary)', fontSize: '10px', fontFamily: 'var(--font-mono)', background: 'rgba(255, 255, 255, 0.94)', padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(103, 36, 43, 0.06)' }}>
+        SCROLL TO ZOOM · DRAG TO REPOSITION ({Math.round(zoomLevel * 100)}%)
       </div>
     </div>
   );

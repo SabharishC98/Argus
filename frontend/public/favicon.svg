@@ -1,5 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <rect x="1" y="1" width="46" height="46" rx="23" fill="#0A0B0C" stroke="#4B4E50"/>
-  <path d="M10 31.5 17.3 16l6.7 12 6.7-12L38 31.5 24 23l-14 8.5Z" stroke="#E2C36B" stroke-width="1.7" stroke-linejoin="miter"/>
-  <path d="m16.5 35 7.5-4.6 7.5 4.6" stroke="#B8BFC5" stroke-width="1.3" stroke-linecap="square"/>
+  <!-- Argus Panoptes Circular Badge -->
+  <circle cx="24" cy="24" r="23" fill="#42161B" stroke="#67242B" stroke-width="2"/>
+  <circle cx="24" cy="24" r="20" stroke="#8C323B" stroke-width="0.75" stroke-dasharray="3 2" stroke-opacity="0.6"/>
+
+  <!-- Celestial Cardinal Rays -->
+  <line x1="24" y1="4" x2="24" y2="8" stroke="#F2F2F2" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="24" y1="40" x2="24" y2="44" stroke="#F2F2F2" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="4" y1="24" x2="8" y2="24" stroke="#F2F2F2" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="40" y1="24" x2="44" y2="24" stroke="#F2F2F2" stroke-width="1.8" stroke-linecap="round"/>
+
+  <!-- Argus Panoptes Watchful Eye Contour -->
+  <path d="M7 24 C13 13, 35 13, 41 24 C35 35, 13 35, 7 24 Z" stroke="#F2F2F2" stroke-width="2.2" stroke-linejoin="round" fill="none"/>
+
+  <!-- Concentric Iris Astrolabe Ring -->
+  <circle cx="24" cy="24" r="7.5" stroke="#F2F2F2" stroke-width="1.4" stroke-opacity="0.9" fill="#67242B"/>
+  <circle cx="24" cy="24" r="5" stroke="#E8A2A8" stroke-width="1" stroke-dasharray="2 1.5" fill="none"/>
+
+  <!-- Central Vigilant Pupil -->
+  <circle cx="24" cy="24" r="3" fill="#F2F2F2"/>
+  <circle cx="25.5" cy="22.5" r="1.1" fill="#42161B"/>
 </svg>

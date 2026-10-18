@@ -1,55 +1,61 @@
 import { useEffect, useState } from 'react';
-import { Activity, FlaskConical, History, Network, Compass, ShieldAlert, Cpu, BarChart3 } from 'lucide-react';
+import { Compass, Network, ShieldAlert, BarChart3 } from 'lucide-react';
 import InvestigationView from './views/InvestigationView';
 import GraphExplorerView from './views/GraphExplorerView';
 import FindingsView from './views/FindingsView';
 import EvaluationView from './views/EvaluationView';
-import AttackGraphView from './views/AttackGraphView';
-import LiveMonitor from './views/LiveMonitor';
-import RunHistory from './views/RunHistory';
-import ExperimentRunner from './views/ExperimentRunner';
+import ArgusMythBackground from './components/ArgusMythBackground';
 import { api, type HealthStatus } from './services/api';
 import './index.css';
 
-type View = 'investigation' | 'explorer' | 'findings' | 'evaluation' | 'graph' | 'monitor' | 'history' | 'experiment';
+type View = 'investigation' | 'explorer' | 'findings' | 'evaluation';
 
 const NAV_ITEMS = [
-  { id: 'investigation', label: 'Agent Investigation', icon: Compass, code: '01' },
-  { id: 'explorer',      label: 'Graph Explorer',     icon: Network, code: '02' },
+  { id: 'investigation', label: 'Agent Investigation', icon: Compass,     code: '01' },
+  { id: 'explorer',      label: 'Graph Explorer',     icon: Network,     code: '02' },
   { id: 'findings',      label: 'Findings & Actions',  icon: ShieldAlert, code: '03' },
-  { id: 'evaluation',    label: 'Measured Results',    icon: BarChart3, code: '04' },
-  { id: 'graph',         label: 'Attack Graph (Lab)',  icon: Activity, code: '05' },
-  { id: 'monitor',       label: 'Live Monitor',        icon: Cpu, code: '06' },
-  { id: 'history',       label: 'Run Archive',         icon: History, code: '07' },
-  { id: 'experiment',    label: 'Experiments',         icon: FlaskConical, code: '08' },
+  { id: 'evaluation',    label: 'Measured Results & Lab', icon: BarChart3, code: '04' },
 ] as const;
 
 export default function App() {
   const [view, setView] = useState<View>('investigation');
   const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
 
   useEffect(() => {
-    api.health().then(setHealth).catch(() => setHealth(null));
-    const interval = setInterval(() => {
-      api.health().then(setHealth).catch(() => setHealth(null));
-    }, 30_000);
+    const check = () => {
+      api.health()
+        .then(setHealth)
+        .catch(() => setHealth(null));
+    };
+    check();
+    // Poll fast (4s) during initial cloud wake-up, then settle to 30s once online
+    const interval = setInterval(check, health ? 30_000 : 4_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [health]);
 
   return (
     <div className="app-layout">
+      {/* Mythical Argus Panoptes Drawing Background */}
+      <ArgusMythBackground />
+
       <nav className="sidebar" aria-label="Primary navigation">
         <div className="sidebar-logo">
-          <span className="brand-mark" aria-hidden="true">
+          <span className="brand-mark" aria-hidden="true" title="Argus Panoptes — The All-Seeing Guardian">
             <svg viewBox="0 0 32 32" fill="none">
-              <path d="M5 23 12 9l4 8 4-8 7 14-11-7-11 7Z" stroke="#38bdf8" strokeWidth="2" />
-              <path d="m10 25 6-4 6 4" stroke="#f59e0b" strokeWidth="2" />
+              {/* Outer watchful eye contour */}
+              <path d="M4 16 C8 8, 24 8, 28 16 C24 24, 8 24, 4 16 Z" stroke="#F2F2F2" strokeWidth="1.6" />
+              {/* Concentric iris ring */}
+              <circle cx="16" cy="16" r="5" stroke="#67242B" strokeWidth="2" fill="none" />
+              {/* Vigilant pupil */}
+              <circle cx="16" cy="16" r="2.2" fill="#F2F2F2" />
+              {/* Celestial ticks */}
+              <line x1="16" y1="3" x2="16" y2="6.5" stroke="#A83E49" strokeWidth="1.5" />
+              <line x1="16" y1="25.5" x2="16" y2="29" stroke="#A83E49" strokeWidth="1.5" />
             </svg>
           </span>
           <span className="brand-lockup">
-            <span className="brand-name">ShadowLens</span>
-            <span className="brand-caption" style={{ color: '#38bdf8' }}>Connected Data Agent</span>
+            <span className="brand-name">ARGUS</span>
+            <span className="brand-caption" style={{ color: 'var(--accent-burgundy-bright)' }}>ALL-SEEING GRAPH AGENT</span>
           </span>
         </div>
 
@@ -77,28 +83,28 @@ export default function App() {
             <span>Agent Engine</span>
             <span className={`status-beacon ${health ? 'is-online' : 'is-offline'}`} />
           </div>
-          <strong>{health ? 'Connected & Active' : 'Offline'}</strong>
+          <strong>{health ? 'Connected & Active' : 'Connecting Engine...'}</strong>
           <span className="runtime-detail">
             {health
-              ? `Graph Ready · MCP Tools Active · API v${health.version || '2.0.0'}`
-              : 'Waiting for API connection'}
+              ? `FalkorDB Graph Ready · MCP Active · v${health.version || '2.0.0'}`
+              : 'Waking up cloud container (takes ~30s on free tier)...'}
           </span>
         </section>
 
         <div className="sidebar-footer">
-          <span>ShadowLens 2.0 Agent</span>
-          <span>Hackathon Submission · Connected Data</span>
+          <span>Argus 2.0 Agent</span>
+          <span>Hackathon Track 01 · Connected Data</span>
         </div>
       </nav>
 
-      <main className="main-content">
+      <main className="main-content" style={{ position: 'relative', zIndex: 2 }}>
         <div className="utility-bar">
           <div className="utility-path">
-            <span>Autonomous Security Agent</span>
+            <span>Argus Autonomous Security Agent</span>
             <span className="utility-separator">/</span>
-            <span>Connected Knowledge Graph</span>
+            <span>FalkorDB Knowledge Graph</span>
             <span className="utility-separator">/</span>
-            <span style={{ color: '#38bdf8' }}>Multi-Hop Reasoning</span>
+            <span style={{ color: 'var(--accent-burgundy-bright)', fontWeight: 600 }}>Multi-Hop Reasoning</span>
           </div>
           <div className="utility-meta">
             <span>Model Context Protocol (MCP)</span>
@@ -110,10 +116,6 @@ export default function App() {
         {view === 'explorer' && <GraphExplorerView />}
         {view === 'findings' && <FindingsView />}
         {view === 'evaluation' && <EvaluationView />}
-        {view === 'graph' && <AttackGraphView onRunStarted={setActiveRunId} />}
-        {view === 'monitor' && <LiveMonitor runId={activeRunId} />}
-        {view === 'history' && <RunHistory />}
-        {view === 'experiment' && <ExperimentRunner />}
       </main>
     </div>
   );

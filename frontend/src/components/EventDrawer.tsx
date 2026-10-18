@@ -21,11 +21,11 @@ export default function EventDrawer({ event, onClose }: Props) {
             <h3 style={{ marginBottom: 4 }}>
               {event.sender_node} → {event.receiver_node}
             </h3>
-            <span style={{ fontSize: '0.75rem', color: '#8A9197' }}>Hop {event.hop_index} · {new Date(event.timestamp).toLocaleTimeString()}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Hop {event.hop_index} · {new Date(event.timestamp).toLocaleTimeString()}</span>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: '#B8BFC5', cursor: 'pointer', fontSize: '1.2rem' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '1.2rem' }}
           >✕</button>
         </div>
 
@@ -63,7 +63,7 @@ export default function EventDrawer({ event, onClose }: Props) {
                 <span style={{ color: confColor, fontWeight: 700, fontFamily: 'monospace' }}>
                   {(event.injection_confidence * 100).toFixed(1)}%
                 </span>
-                <div style={{ flex: 1, background: 'rgba(255,255,255,0.07)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                <div style={{ flex: 1, background: 'rgba(103, 36, 43, 0.1)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
                   <div style={{ width: `${event.injection_confidence * 100}%`, height: '100%', background: confColor, borderRadius: 4, transition: 'width 0.3s' }} />
                 </div>
               </div>
@@ -82,12 +82,12 @@ export default function EventDrawer({ event, onClose }: Props) {
             {Object.entries(event.all_scores).map(([label, score]) => (
               <div key={label}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: '0.8rem', color: '#B8BFC5' }}>{label}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{label}</span>
                   <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: score > 0.5 ? palette.goldBright : palette.silver }}>
                     {(score * 100).toFixed(1)}%
                   </span>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 4, height: 5, overflow: 'hidden' }}>
+                <div style={{ background: 'rgba(103, 36, 43, 0.1)', borderRadius: 4, height: 5, overflow: 'hidden' }}>
                   <div style={{
                     width: `${score * 100}%`, height: '100%', borderRadius: 4,
                     background: score > 0.5 ? palette.goldBright : score > 0.2 ? palette.gold : palette.silver,
@@ -114,8 +114,8 @@ export default function EventDrawer({ event, onClose }: Props) {
 function Row({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-      <span style={{ fontSize: '0.78rem', color: '#899097', minWidth: 140 }}>{label}</span>
-      <span style={{ fontSize: '0.82rem', color: '#E1E3E5', textAlign: 'right', flex: 1 }}>
+      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', minWidth: 140 }}>{label}</span>
+      <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)', textAlign: 'right', flex: 1 }}>
         {children || value}
       </span>
     </div>

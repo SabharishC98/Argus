@@ -175,7 +175,7 @@ export default function AttackGraphView({ onRunStarted }: AttackGraphViewProps) 
 
           {runStatus !== 'idle' && (
             <div className={`run-state run-state--${runStatus}`}>
-              Status: <strong style={{ color: '#ffffff' }}>{runStatus.toUpperCase()}</strong>
+              Status: <strong style={{ color: 'var(--accent-burgundy)' }}>{runStatus.toUpperCase()}</strong>
               {currentRunId && <span className="run-state-id">
                 {currentRunId.slice(0, 20)}...
               </span>}

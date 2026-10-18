@@ -57,8 +57,10 @@ class RepositoryIngestor:
         repo_dir: Path
 
         if is_url:
-            # Clone repo to temporary workspace
-            temp_dir = tempfile.mkdtemp(prefix="shadowlens_repo_")
+            # Clone repo to D:\shadowlens_tmp — C: drive may be full
+            base_tmp = Path("D:/shadowlens_tmp")
+            base_tmp.mkdir(parents=True, exist_ok=True)
+            temp_dir = tempfile.mkdtemp(prefix="shadowlens_repo_", dir=str(base_tmp))
             repo_dir = Path(temp_dir)
             clean_url = repo_url_or_path.strip().rstrip("/")
             if not clean_url.endswith(".git"):
@@ -67,14 +69,15 @@ class RepositoryIngestor:
                 clean_url_git = clean_url
 
             repo_name = clean_url.split("/")[-1].replace(".git", "")
-            logger.info(f"Cloning {clean_url_git} (shallow) to {repo_dir}...")
+            logger.info(f"Cloning {clean_url_git} (shallow) to {repo_dir} on D: drive...")
             try:
+                # Shallow clone depth=1 — fast and small, no history
                 cmd = ["git", "clone", "--depth", "1", clean_url_git, str(repo_dir)]
-                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=35)
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
                 if proc.returncode != 0:
-                    # Try raw url without .git
+                    # Try without .git suffix
                     cmd2 = ["git", "clone", "--depth", "1", clean_url, str(repo_dir)]
-                    proc2 = subprocess.run(cmd2, capture_output=True, text=True, timeout=35)
+                    proc2 = subprocess.run(cmd2, capture_output=True, text=True, timeout=120)
                     if proc2.returncode != 0:
                         raise RuntimeError(f"Git clone failed: {proc.stderr or proc2.stderr}")
             except Exception as exc:

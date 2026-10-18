@@ -124,7 +124,7 @@ export default function DecipherTerminal({ events, runStatus }: DecipherTerminal
         </div>
 
         {/* Wave display */}
-        <div style={{ background: '#0A0B0C', border: '1px solid rgba(184,191,197,0.16)', height: 45, width: '100%', maxWidth: 280, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ background: '#FAF8F8', border: '1px solid var(--border)', height: 45, width: '100%', maxWidth: 280, position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-sm)' }}>
           <svg style={{ width: '100%', height: '100%' }}>
             <path
               d={getOscilloscopePath()}
@@ -135,16 +135,16 @@ export default function DecipherTerminal({ events, runStatus }: DecipherTerminal
             />
           </svg>
           {/* Subtle grid lines */}
-          <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, borderTop: '1px dashed rgba(184,191,197,0.14)' }} />
+          <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, borderTop: '1px dashed rgba(103, 36, 43, 0.15)' }} />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontFamily: 'monospace', fontSize: '0.72rem' }}>
           <div>
-            <span style={{ color: 'rgba(255,255,255,0.45)' }}>DRIFT: </span>
+            <span style={{ color: 'var(--text-muted)' }}>DRIFT: </span>
             <span style={{ color: telemetryColor, fontWeight: 'bold' }}>{driftVal.toFixed(4)}</span>
           </div>
           <div>
-            <span style={{ color: 'rgba(255,255,255,0.45)' }}>CONF: </span>
+            <span style={{ color: 'var(--text-muted)' }}>CONF: </span>
             <span style={{ color: telemetryColor, fontWeight: 'bold' }}>
               {latestEvent ? `${(latestEvent.injection_confidence * 100).toFixed(0)}%` : '0%'}
             </span>
@@ -155,11 +155,11 @@ export default function DecipherTerminal({ events, runStatus }: DecipherTerminal
       {/* Right side: Scrambled Cypher Decryptor Text */}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: '#92999F' }}>
+          <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
             [ INTER-AGENT BOUNDARY DECRYPTOR ]
           </span>
           {latestEvent && (
-            <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: telemetryColor }}>
+            <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: telemetryColor, fontWeight: 600 }}>
               {latestEvent.sender_node} ➔ {latestEvent.receiver_node}
             </span>
           )}
@@ -170,22 +170,23 @@ export default function DecipherTerminal({ events, runStatus }: DecipherTerminal
             fontFamily: 'monospace', 
             fontSize: '0.76rem', 
             lineHeight: '1.3',
-            background: 'rgba(0,0,0,0.5)',
-            border: '1px solid rgba(184, 191, 197, 0.12)',
+            background: '#FAF8F8',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)',
             padding: '8px 12px',
             minHeight: 52,
-            color: isCritical ? palette.goldBright : isWarning ? palette.gold : palette.white,
+            color: 'var(--text-primary)',
             letterSpacing: '0.3px',
             wordBreak: 'break-all'
           }}
         >
           {runStatus === 'idle' && (
-            <span style={{ color: '#92999F' }}>
+            <span style={{ color: 'var(--text-muted)' }}>
               &gt; SYSTEM BOUNDARIES IDLE. WAITING FOR PIPELINE TRAFFIC...
             </span>
           )}
           {runStatus === 'running' && !latestEvent && (
-            <span style={{ color: palette.gold, animation: 'blink 1.2s infinite' }}>
+            <span style={{ color: palette.burgundy, animation: 'blink 1.2s infinite' }}>
               &gt; INITIALIZING STREAM CAPTURE BOUNDARIES...
             </span>
           )}
