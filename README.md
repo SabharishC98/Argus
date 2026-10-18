@@ -21,6 +21,21 @@
 
 ---
 
+## 🌐 Live Demo
+
+| Component | URL | Notes |
+| :--- | :--- | :--- |
+| **Frontend (Vercel)** | [argus-frontend.vercel.app](https://argus-frontend.vercel.app) | Auto-deploys from `main` |
+| **Backend API (Render)** | [argus-backend-un0a.onrender.com](https://argus-backend-un0a.onrender.com) | Free tier — first request takes ~30s to wake |
+| **API Docs (Swagger)** | [argus-backend-un0a.onrender.com/docs](https://argus-backend-un0a.onrender.com/docs) | FastAPI interactive docs |
+| **Health Check** | [/api/health](https://argus-backend-un0a.onrender.com/api/health) | Returns `falkordb_connected`, `falkordb_mode`, node count |
+
+> **Note for judges**: The Vercel frontend is a static React SPA that calls the Render backend at runtime via `VITE_API_URL`. If the Render container is cold-sleeping, open `/api/health` first, wait ~30 seconds for a `200 OK`, then reload the frontend. The graph will populate automatically.
+>
+> **No separate FalkorDB server required**: The backend ships FalkorDB in embedded mode (`falkordb-py` + openCypher engine). The app runs fully self-contained with the pre-seeded 14-node security graph. For a live cloud FalkorDB instance, set `FALKORDB_URL=redis://<host>:6379` and `FALKORDB_GRAPH_NAME=argus` in the environment.
+
+---
+
 ## 1. What is ARGUS?
 
 **ARGUS** is an autonomous investigation system built for the hackathon theme **"Agents That Act on Connected Data"** (Track 01).
@@ -50,10 +65,12 @@ An autonomous agent is equipped with the **Model Context Protocol (MCP)** to tra
 │               │ Dynamic Tool Selection            │    MCP Server    │ │
 │               ▼                                   └──────────────────┘ │
 │   ┌─────────────────────────────────────────────────────────┐          │
-│   │ 1. search_entity()       5. calculate_graph_risk()      │          │
-│   │ 2. get_entity()          6. get_impact_analysis()       │          │
-│   │ 3. get_neighbors()       7. create_finding()            │          │
-│   │ 4. find_path()           8. take_remediation_action()   │          │
+│   │  1. search_entity()          7. find_related_entities()  │          │
+│   │  2. get_entity()             8. calculate_graph_risk()   │          │
+│   │  3. get_neighbors()          9. get_impact_analysis()    │          │
+│   │  4. find_path()             10. find_related_findings()  │          │
+│   │  5. get_subgraph()          11. create_finding()         │          │
+│   │  6. find_related_entities() 12. take_remediation_action()│          │
 │   └─────────────────────────────────────────────────────────┘          │
 │               │                                                        │
 │               ▼ Multi-Hop Graph Evidence                               │
@@ -88,7 +105,7 @@ Every core capability depends directly on FalkorDB:
 | Blast-radius calculation | Bidirectional BFS (successors + predecessors) over FalkorDB |
 | Graph-based risk escalation | Risk decay propagation (`R(v) = base * decay^hop`) over FalkorDB |
 | Evidence-path visualization | Paths serialized from FalkorDB node/edge data |
-| MCP graph tool execution | All 8 MCP graph tools call FalkorDB directly |
+| MCP graph tool execution | All 12 MCP graph tools call FalkorDB directly |
 | Agent investigation decisions | Multi-hop evidence is retrieved exclusively from FalkorDB |
 
 **If FalkorDB is removed or disabled:**
@@ -245,10 +262,14 @@ FalkorDB (port 6379, Redis-compatible protocol, embedded openCypher engine)
 | `get_entity` | `get_node()` → lookup in FalkorDB node mirror |
 | `get_neighbors` | `get_neighbors()` → edge traversal in FalkorDB |
 | `find_path` | `find_shortest_path()` → networkx shortest path over FalkorDB graph |
+| `get_subgraph` | `get_subgraph()` → ego-subgraph BFS from FalkorDB |
+| `find_related_entities` | `get_neighbors()` → multi-hop type-filtered BFS over FalkorDB |
 | `calculate_graph_risk` | `calculate_risk_propagation()` → BFS decay over FalkorDB graph |
 | `get_impact_analysis` | `get_blast_radius()` → bidirectional BFS over FalkorDB graph |
 | `find_related_findings` | `get_neighbors()` → type-filtered traversal of FalkorDB |
 | `create_finding` | `add_node() + add_edge()` → writes finding into FalkorDB |
+| `update_finding` | `update_node()` → updates finding properties in FalkorDB |
+| `take_remediation_action` | `get_blast_radius()` → blast radius pre-check before action |
 
 ---
 
@@ -523,21 +544,22 @@ docker compose up --build
 ## 14. Running Tests
 
 ```bash
-# All 15 tests
+# All 16 tests
 python -m pytest tests/ -v
 
-# FalkorDB-specific verification (3 tests)
+# FalkorDB-specific verification (4 tests)
 python -m pytest tests/test_falkordb_verification.py -v
 ```
 
-**Expected output: 15 passed**
+**Expected output: 16 passed**
 
 Tests validate:
 - FalkorDB is the primary and authoritative store (`test_falkordb_is_primary_store`)
-- All 8 required FalkorDB graph operations execute correctly (`test_falkordb_required_operations`)
+- All 12 required FalkorDB graph operations execute correctly (`test_falkordb_required_operations`)
 - **Critical Verification Test**: disabling FalkorDB halts all core capabilities with no silent fallback (`test_critical_verification_remove_falkordb`)
+- FalkorDB network-unreachable socket test (`test_falkordb_network_outage_unreachable_socket`)
 - Real data repository AST ingestion & OSV enrichment
-- 18-scenario benchmark evaluation & metric calculations
+- 22-scenario benchmark evaluation & metric calculations (18 seeded + 4 held-out real-repo)
 - Non-obvious graph insight escalation (`MEDIUM` → `CRITICAL`)
 - Human-in-the-loop action approval with blast radius previews
 - Failure honesty & uncertainty handling (`INSUFFICIENT_EVIDENCE`)
@@ -553,10 +575,12 @@ Tests validate:
 | `get_neighbors` | Graph | Edge traversal in FalkorDB |
 | `find_path` | Graph | shortestPath via FalkorDB |
 | `get_subgraph` | Graph | Ego-subgraph BFS from FalkorDB |
+| `find_related_entities` | Graph | Multi-hop type-filtered BFS over FalkorDB |
 | `calculate_graph_risk` | Analysis | Risk decay BFS over FalkorDB |
 | `get_impact_analysis` | Analysis | Bidirectional blast radius BFS over FalkorDB |
 | `find_related_findings` | Analysis | Type-filtered neighbor query on FalkorDB |
 | `create_finding` | Action | Write finding node+edges to FalkorDB |
+| `update_finding` | Action | Update finding properties in FalkorDB |
 | `take_remediation_action` | Action | Pre-execution blast radius from FalkorDB |
 
 ---
