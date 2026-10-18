@@ -10,7 +10,11 @@ const ALGORITHMS = [
   { id: 'centrality', label: 'Centrality & Bottlenecks' },
 ];
 
-export default function GraphExplorerView() {
+interface Props {
+  onFalkorToggle?: () => void;
+}
+
+export default function GraphExplorerView({ onFalkorToggle }: Props) {
   const [overview, setOverview] = useState<GraphOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [falkorStatus, setFalkorStatus] = useState<import('../services/api').FalkorDBStatus | null>(null);
@@ -53,6 +57,8 @@ export default function GraphExplorerView() {
       await api.toggleFalkorDB(!falkorStatus.is_operational);
       fetchFalkorStatus();
       fetchGraph();
+      // Propagate up so App.tsx top bar reflects the new state immediately
+      onFalkorToggle?.();
     } catch (err) {
       console.error('Failed to toggle FalkorDB', err);
     }

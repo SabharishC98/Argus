@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Compass, Network, ShieldAlert, BarChart3 } from 'lucide-react';
 import InvestigationView from './views/InvestigationView';
 import GraphExplorerView from './views/GraphExplorerView';
@@ -21,17 +21,16 @@ export default function App() {
   const [view, setView] = useState<View>('investigation');
   const [health, setHealth] = useState<HealthStatus | null>(null);
 
+  const refreshHealth = useCallback(() => {
+    api.health().then(setHealth).catch(() => setHealth(null));
+  }, []);
+
   useEffect(() => {
-    const check = () => {
-      api.health()
-        .then(setHealth)
-        .catch(() => setHealth(null));
-    };
-    check();
+    refreshHealth();
     // Poll fast (4s) during initial cloud wake-up, then settle to 30s once online
-    const interval = setInterval(check, health ? 30_000 : 4_000);
+    const interval = setInterval(refreshHealth, health ? 30_000 : 4_000);
     return () => clearInterval(interval);
-  }, [health]);
+  }, [health, refreshHealth]);
 
   return (
     <div className="app-layout">
@@ -121,7 +120,7 @@ export default function App() {
         </div>
 
         {view === 'investigation' && <InvestigationView />}
-        {view === 'explorer' && <GraphExplorerView />}
+        {view === 'explorer' && <GraphExplorerView onFalkorToggle={refreshHealth} />}
         {view === 'findings' && <FindingsView />}
         {view === 'evaluation' && <EvaluationView />}
       </main>
