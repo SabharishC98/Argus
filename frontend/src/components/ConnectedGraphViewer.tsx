@@ -203,14 +203,20 @@ export default function ConnectedGraphViewer({
       isPathLink: pathEdgeKeys.has(`${e.source}->${e.target}`) || pathEdgeKeys.has(`${e.target}->${e.source}`),
     }));
 
-    // Create D3 Force Simulation with HIGH friction & rapid decay to prevent jitter/shaking
+    // Scale physics dynamically with node count to ensure ample spacing
+    const nodeCount = d3Nodes.length;
+    const linkDist = nodeCount > 50 ? 150 : (nodeCount > 25 ? 130 : 110);
+    const repulseStrength = nodeCount > 50 ? -380 : (nodeCount > 25 ? -280 : -220);
+    const collideRadius = nodeCount > 50 ? 44 : 38;
+
+    // Create D3 Force Simulation with balanced repulsion and collision to ensure clean spacing
     const simulation = d3.forceSimulation<D3Node>(d3Nodes)
-      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(110).strength(0.7))
-      .force('charge', d3.forceManyBody().strength(-200).distanceMax(340))
-      .force('center', d3.forceCenter(width / 2, h / 2).strength(0.08))
-      .force('collision', d3.forceCollide().radius(36).strength(0.7))
+      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(linkDist).strength(0.6))
+      .force('charge', d3.forceManyBody().strength(repulseStrength).distanceMax(550))
+      .force('center', d3.forceCenter(width / 2, h / 2).strength(0.06))
+      .force('collision', d3.forceCollide().radius(collideRadius).strength(0.85))
       .velocityDecay(0.65)   // High friction: quickly settles without elastic oscillation
-      .alphaDecay(0.05);     // Rapid cooling: graph reaches stable resting state in ~40 ticks (~1s)
+      .alphaDecay(0.04);     // Rapid cooling: graph reaches stable resting state quickly
 
     // If positions were already known, reheat very gently so it barely shifts
     if (hasExistingPositions) {
@@ -238,21 +244,26 @@ export default function ConnectedGraphViewer({
     // Main edge line
     const edgeLines = link.append('line')
       .attr('class', 'edge-line')
-      .attr('stroke', d => d.isPathLink ? '#67242B' : 'rgba(103, 36, 43, 0.22)')
-      .attr('stroke-width', d => d.isPathLink ? 2.5 : 1.2)
+      .attr('stroke', d => d.isPathLink ? '#67242B' : 'rgba(103, 36, 43, 0.18)')
+      .attr('stroke-width', d => d.isPathLink ? 2.5 : 1.1)
       .attr('stroke-dasharray', d => d.isPathLink ? '6,3' : 'none')
       .attr('marker-end', d => d.isPathLink ? 'url(#arrow-highlight)' : 'url(#arrow-default)');
 
-    // Edge label (relationship type)
+    // Edge label (relationship type) - hide non-critical edge text when dense to keep view clean
     const edgeLabels = link.append('text')
       .attr('class', 'edge-label')
-      .attr('font-size', '9px')
-      .attr('fill', d => d.isPathLink ? '#67242B' : '#8E545B')
+      .attr('font-size', '8px')
+      .attr('fill', d => d.isPathLink ? '#67242B' : 'rgba(142, 84, 91, 0.75)')
       .attr('font-weight', d => d.isPathLink ? '700' : '400')
       .attr('font-family', 'var(--font-mono), monospace')
       .attr('text-anchor', 'middle')
-      .attr('dy', -4)
-      .text(d => d.type);
+      .attr('dy', -3)
+      .style('pointer-events', 'none')
+      .text(d => {
+        // In dense graphs, only show labels on highlighted paths or significant links
+        if (nodeCount > 40 && !d.isPathLink) return '';
+        return d.type;
+      });
 
     // Render nodes
     const nodeGroup = g.append('g').attr('class', 'nodes');
@@ -309,7 +320,7 @@ export default function ConnectedGraphViewer({
 
     // Node base circle
     node.append('circle')
-      .attr('r', d => d.isPathNode ? 20 : 17)
+      .attr('r', d => d.isPathNode ? 20 : 16)
       .attr('fill', '#FAF6F2')
       .attr('stroke', d => RISK_COLORS[d.risk_level] || '#8E545B')
       .attr('stroke-width', d => d.isPathNode ? 3.5 : 2);
@@ -318,29 +329,60 @@ export default function ConnectedGraphViewer({
     node.append('text')
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
-      .attr('font-size', '13px')
+      .attr('font-size', '12px')
+      .style('pointer-events', 'none')
       .text(d => TYPE_ICONS[d.type] || '●');
 
-    // Node title label
-    node.append('text')
+    // Node label badge background for crystal-clear readability
+    node.append('rect')
+      .attr('class', 'label-bg')
+      .attr('rx', 3)
+      .attr('ry', 3)
+      .attr('fill', 'rgba(255, 255, 255, 0.88)')
+      .attr('stroke', 'rgba(103, 36, 43, 0.12)')
+      .attr('stroke-width', 0.5)
+      .style('pointer-events', 'none');
+
+    // Node title label with clean truncation
+    const labelTexts = node.append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', 32)
-      .attr('font-size', '11px')
+      .attr('dy', 28)
+      .attr('font-size', '10px')
       .attr('font-weight', d => d.isPathNode ? '700' : '500')
       .attr('fill', d => d.isPathNode ? '#67242B' : '#1F0B0E')
+      .attr('font-family', 'system-ui, -apple-system, sans-serif')
+      .style('pointer-events', 'none')
       .text(d => {
-        const short = d.label.length > 24 ? d.label.slice(0, 22) + '…' : d.label;
-        return short;
+        const maxLen = nodeCount > 40 ? 16 : 22;
+        return d.label.length > maxLen ? d.label.slice(0, maxLen - 1) + '…' : d.label;
       });
 
-    // Node type caption
-    node.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', 44)
-      .attr('font-size', '9px')
-      .attr('fill', '#8E545B')
-      .attr('font-family', 'ui-monospace, monospace')
-      .text(d => `${d.type} · ${d.risk_level}`);
+    // Auto-fit label backgrounds
+    labelTexts.each(function(this: SVGTextElement) {
+      try {
+        const bbox = this.getBBox();
+        const parent = d3.select(this.parentNode as SVGGElement);
+        parent.select('.label-bg')
+          .attr('x', bbox.x - 4)
+          .attr('y', bbox.y - 1)
+          .attr('width', bbox.width + 8)
+          .attr('height', bbox.height + 2);
+      } catch {
+        // Fallback if headless/hidden
+      }
+    });
+
+    // Node subtitle / type caption: hide in dense graphs to eliminate clumsy text collisions
+    if (nodeCount <= 35) {
+      node.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', 40)
+        .attr('font-size', '8.5px')
+        .attr('fill', '#8E545B')
+        .attr('font-family', 'ui-monospace, monospace')
+        .style('pointer-events', 'none')
+        .text(d => `${d.type} · ${d.risk_level}`);
+    }
 
     // Simulation tick update
     simulation.on('tick', () => {

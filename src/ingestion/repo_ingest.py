@@ -153,10 +153,12 @@ class RepositoryIngestor:
 
             # 4. Walk Code Files & Parse AST
             py_files = list(repo_dir.glob("**/*.py"))
-            # Skip virtualenvs or git internals
+            # Skip virtualenvs, git internals, and unit test files to avoid cluttering the security graph
             valid_files = [
                 f for f in py_files
-                if not any(part in f.parts for part in (".git", "venv", ".venv", "env", "__pycache__", "node_modules"))
+                if not any(part in f.parts for part in (".git", "venv", ".venv", "env", "__pycache__", "node_modules", "tests", "test", "testing", "docs", "examples"))
+                and not f.name.startswith("test_")
+                and not f.name.endswith("_test.py")
             ][:max_files]
 
             parsed_file_nodes: List[str] = []
