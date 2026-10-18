@@ -1,5 +1,5 @@
-# ShadowLens-Agent
-### Autonomous Graph-Powered Investigation Agent That Acts on Connected Data
+# ARGUS (The All-Seeing Autonomous Graph Security Agent)
+### Autonomous Multi-Hop Security Investigation Agent That Acts on Connected Data
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
@@ -10,11 +10,22 @@
 
 ---
 
-## 1. What is ShadowLens-Agent?
+## 🏆 Hackathon Submission Checklist (Track 01)
 
-**ShadowLens-Agent** is an autonomous investigation system for the hackathon theme **"Agents That Act on Connected Data"**.
+| Requirement | Implementation & Links |
+| :--- | :--- |
+| **1. Public Source-Code Repository** | [github.com/SabharishC98/Argus](https://github.com/SabharishC98/Argus) |
+| **2. Setup Instructions** | [Section 7 (Docker / Cloud)](file:///d:/shadowlens2.0/ShadowLens-Agent/README.md#7-starting-falkordb-locally) & [Section 12 (Quickstart)](file:///d:/shadowlens2.0/ShadowLens-Agent/README.md#12-quickstart-guide-local) |
+| **3. Graph Data Model** | [Section 3: FalkorDB Graph Schema (Node & Edge Topology)](file:///d:/shadowlens2.0/ShadowLens-Agent/README.md#3-falkordb-graph-schema) |
+| **4. Cypher Queries & Graph Algorithms** | [Section 4: Key FalkorDB Cypher Queries & Traversal Algorithms](file:///d:/shadowlens2.0/ShadowLens-Agent/README.md#4-key-falkordb-cypher-queries) |
 
-Unlike conventional security scanners, ShadowLens builds an interconnected knowledge graph spanning repositories, endpoints, controllers, database queries, dependencies, cloud resources, and CVEs — all stored in **FalkorDB** as the primary, authoritative graph database.
+---
+
+## 1. What is ARGUS?
+
+**ARGUS** is an autonomous investigation system built for the hackathon theme **"Agents That Act on Connected Data"** (Track 01).
+
+Unlike conventional flat-log security scanners or static linters, ARGUS constructs an interconnected knowledge graph spanning repositories, endpoints, controllers, database queries, dependencies, cloud resources, and CVEs — all stored and queried directly in **FalkorDB** as the primary, authoritative graph database.
 
 An autonomous agent is equipped with the **Model Context Protocol (MCP)** to traverse multiple graph hops using FalkorDB Cypher queries, execute graph algorithms, evaluate cascading risk, take defensive actions, and generate a step-by-step, explainable evidence trail.
 
@@ -478,8 +489,8 @@ docker run -p 6379:6379 -it --rm falkordb/falkordb:latest
 
 ### Step 2: Clone and Set Up Backend
 ```bash
-git clone https://github.com/SabharishC98/ShadowLens-Agent.git
-cd ShadowLens-Agent
+git clone https://github.com/SabharishC98/Argus.git
+cd Argus
 pip install -r requirements.txt
 python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
