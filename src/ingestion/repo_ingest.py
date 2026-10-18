@@ -107,7 +107,7 @@ class RepositoryIngestor:
                     type=EntityType.REPOSITORY,
                     risk_level="SAFE",
                     risk_score=0.1,
-                    properties={"url": repo_url_or_path, "local_path": str(repo_dir)},
+                    properties={"url": repo_url_or_path, "repo_name": repo_name},
                 )
             )
 
