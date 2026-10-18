@@ -45,6 +45,13 @@ async def health_check():
     except Exception:
         pass
 
+    # LLM providers
+    providers = []
+    if os.getenv("GEMINI_API_KEY"):     providers.append("gemini")
+    if os.getenv("GROQ_API_KEY"):       providers.append("groq")
+    if os.getenv("OPENAI_API_KEY"):     providers.append("openai")
+    if os.getenv("ANTHROPIC_API_KEY"):  providers.append("anthropic")
+
     return HealthResponse(
         status              = "ok",
         classifier_mode     = clf_mode,
